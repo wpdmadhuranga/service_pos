@@ -1,0 +1,11 @@
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\bin\Debug\net9.0\backend.Shared.deps.json
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\bin\Debug\net9.0\backend.Shared.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\bin\Debug\net9.0\backend.Shared.pdb
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.AssemblyInfoInputs.cache
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.AssemblyInfo.cs
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.csproj.CoreCompileInputs.cache
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\refint\backend.Shared.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.pdb
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\ref\backend.Shared.dll

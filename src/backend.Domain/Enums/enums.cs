@@ -1,0 +1,22 @@
+namespace backend.Domain.Enums
+{
+    public enum InvoiceStatus
+    {
+        Draft,
+        Completed,
+        Cancelled
+    }
+
+    public enum PaymentMethod
+    {
+        Cash,
+        Card,
+        BankTransfer
+    }
+
+    public enum UserRole
+    {
+        Admin,
+        Staff
+    }
+}
