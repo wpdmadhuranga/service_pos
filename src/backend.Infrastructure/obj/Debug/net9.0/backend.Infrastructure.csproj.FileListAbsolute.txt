@@ -17,3 +17,4 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Infrastruct
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Infrastructure\obj\Debug\net9.0\refint\backend.Infrastructure.dll
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Infrastructure\obj\Debug\net9.0\backend.Infrastructure.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Infrastructure\obj\Debug\net9.0\ref\backend.Infrastructure.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Infrastructure\obj\Debug\net9.0\backend.Infrastructure.sourcelink.json

@@ -168,3 +168,7 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\obj\Debug\net9.0\backend.API.Tests.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\obj\Debug\net9.0\backend.API.Tests.genruntimeconfig.cache
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\obj\Debug\net9.0\ref\backend.API.Tests.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\bin\Debug\net9.0\BCrypt-Net-Next.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\bin\Debug\net9.0\Microsoft.Extensions.Configuration.Binder.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\bin\Debug\net9.0\Microsoft.Extensions.Options.ConfigurationExtensions.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.API.Tests\obj\Debug\net9.0\backend.API.Tests.sourcelink.json

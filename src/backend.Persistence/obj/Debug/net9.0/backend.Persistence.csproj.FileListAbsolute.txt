@@ -19,3 +19,4 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Persistence
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Persistence\obj\Debug\net9.0\backend.Persistence.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Persistence\obj\Debug\net9.0\backend.Persistence.genruntimeconfig.cache
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Persistence\obj\Debug\net9.0\ref\backend.Persistence.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Persistence\obj\Debug\net9.0\backend.Persistence.sourcelink.json

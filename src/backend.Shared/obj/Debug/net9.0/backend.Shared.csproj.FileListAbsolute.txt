@@ -9,3 +9,4 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\refint\backend.Shared.dll
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\ref\backend.Shared.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Shared\obj\Debug\net9.0\backend.Shared.sourcelink.json

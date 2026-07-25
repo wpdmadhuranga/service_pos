@@ -100,3 +100,4 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Domain.Te
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Domain.Tests\obj\Debug\net9.0\backend.Domain.Tests.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Domain.Tests\obj\Debug\net9.0\backend.Domain.Tests.genruntimeconfig.cache
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Domain.Tests\obj\Debug\net9.0\ref\backend.Domain.Tests.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Domain.Tests\obj\Debug\net9.0\backend.Domain.Tests.sourcelink.json

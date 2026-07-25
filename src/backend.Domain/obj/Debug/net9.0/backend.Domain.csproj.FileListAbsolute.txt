@@ -9,3 +9,4 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Domain\obj\
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Domain\obj\Debug\net9.0\refint\backend.Domain.dll
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Domain\obj\Debug\net9.0\backend.Domain.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Domain\obj\Debug\net9.0\ref\backend.Domain.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\src\backend.Domain\obj\Debug\net9.0\backend.Domain.sourcelink.json

@@ -120,3 +120,4 @@ C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Applicati
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Application.Tests\obj\Debug\net9.0\backend.Application.Tests.pdb
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Application.Tests\obj\Debug\net9.0\backend.Application.Tests.genruntimeconfig.cache
 C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Application.Tests\obj\Debug\net9.0\ref\backend.Application.Tests.dll
+C:\Users\DinushaMaduranga\Documents\microService\backend\tests\backend.Application.Tests\obj\Debug\net9.0\backend.Application.Tests.sourcelink.json

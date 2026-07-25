@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using backend.Application.Common.Interfaces;
 using backend.Domain.Entities;
 using backend.Domain.Entities.History;
 using backend.Domain.Entities.Inventory;
@@ -7,7 +8,7 @@ using backend.Domain.Entities.Audit;
 
 namespace backend.Persistence.Context
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options)
@@ -33,12 +34,11 @@ namespace backend.Persistence.Context
         // schema: audit
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
  
-        // schema: security
-        // public DbSet<LoginHistory> LoginHistory => Set<LoginHistory>();
- 
         // schema: history
         public DbSet<ServiceHistory> ServiceHistory => Set<ServiceHistory>();
         public DbSet<CustomerServiceSummary> CustomerServiceSummaries => Set<CustomerServiceSummary>();
+
+        IQueryable<User> IApplicationDbContext.Users => Users;
  
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
