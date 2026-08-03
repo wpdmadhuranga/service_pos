@@ -41,7 +41,23 @@ builder.Services.AddAuthentication(options =>
     });
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowExpoWeb",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:8081") // Allow Expo web development server
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
+builder.Services.AddControllers();
+
+
 var app = builder.Build();
+
+app.UseCors("AllowExpoWeb");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

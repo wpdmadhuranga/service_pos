@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using backend.Domain.Entities;
+using backend.Domain.Enums;
 
 namespace ServiceCenterApi.Data.Configurations
 {
@@ -15,6 +16,9 @@ namespace ServiceCenterApi.Data.Configurations
             builder.Property(s => s.Description).HasMaxLength(500);
             builder.Property(s => s.Unit).HasMaxLength(20);
             builder.Property(s => s.DefaultPrice).HasColumnType("decimal(10,2)");
+            builder.Property(s => s.PricingType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(PricingType.Fixed);
+            builder.Property(s => s.MinPrice).HasColumnType("decimal(10,2)");
+            builder.Property(s => s.MaxPrice).HasColumnType("decimal(10,2)");
 
             builder.HasIndex(s => s.IsActive);
 

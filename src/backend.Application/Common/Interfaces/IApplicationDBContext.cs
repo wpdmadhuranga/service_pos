@@ -7,7 +7,17 @@ namespace backend.Application.Common.Interfaces
     // Persistence directly - keeps the dependency pointing inward.
     public interface IApplicationDbContext
     {
+        IQueryable<Customer> Customers { get; }
+        IQueryable<Vehicle> Vehicles { get; }
+        IQueryable<ServiceCategory> ServiceCategories { get; }
+        IQueryable<Service> Services { get; }
+        IQueryable<Invoice> Invoices { get; }
+        IQueryable<InvoiceItem> InvoiceItems { get; }
+        IQueryable<Payment> Payments { get; }
         IQueryable<User> Users { get; }
+
+        void Add<TEntity>(TEntity entity) where TEntity : class;
+        void Remove<TEntity>(TEntity entity) where TEntity : class;
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

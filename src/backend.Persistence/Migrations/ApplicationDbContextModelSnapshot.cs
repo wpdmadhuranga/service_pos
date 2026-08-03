@@ -519,10 +519,23 @@ namespace backend.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal?>("MaxPrice")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("MinPrice")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<string>("PricingType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Fixed");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");

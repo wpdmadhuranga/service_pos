@@ -39,6 +39,23 @@ namespace backend.Persistence.Context
         public DbSet<CustomerServiceSummary> CustomerServiceSummaries => Set<CustomerServiceSummary>();
 
         IQueryable<User> IApplicationDbContext.Users => Users;
+        IQueryable<Customer> IApplicationDbContext.Customers => Customers;
+        IQueryable<Vehicle> IApplicationDbContext.Vehicles => Vehicles;
+        IQueryable<ServiceCategory> IApplicationDbContext.ServiceCategories => ServiceCategories;
+        IQueryable<Service> IApplicationDbContext.Services => Services;
+        IQueryable<Invoice> IApplicationDbContext.Invoices => Invoices;
+        IQueryable<InvoiceItem> IApplicationDbContext.InvoiceItems => InvoiceItems;
+        IQueryable<Payment> IApplicationDbContext.Payments => Payments;
+
+        void IApplicationDbContext.Add<TEntity>(TEntity entity)
+        {
+            Set<TEntity>().Add(entity);
+        }
+
+        void IApplicationDbContext.Remove<TEntity>(TEntity entity)
+        {
+            Set<TEntity>().Remove(entity);
+        }
  
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

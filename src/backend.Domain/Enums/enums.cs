@@ -1,5 +1,11 @@
 namespace backend.Domain.Enums
 {
+    public enum PricingType
+    {
+        Fixed,
+        Variable
+    }
+
     public enum InvoiceStatus
     {
         Draft,
