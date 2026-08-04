@@ -15,8 +15,10 @@ namespace ServiceCenterApi.Data.Configurations
             builder.Property(ii => ii.PriceSnapshot).HasColumnType("decimal(10,2)");
             builder.Property(ii => ii.LineTotal).HasColumnType("decimal(10,2)");
             builder.Property(ii => ii.Quantity).HasDefaultValue(1);
+            builder.Property(ii => ii.BrandSnapshot).HasMaxLength(100);
 
             builder.HasIndex(ii => ii.InvoiceId);
+            builder.HasIndex(ii => ii.ProductId);
 
             builder.HasOne(ii => ii.Invoice)
                 .WithMany(i => i.InvoiceItems)
@@ -27,6 +29,12 @@ namespace ServiceCenterApi.Data.Configurations
             builder.HasOne(ii => ii.Service)
                 .WithMany(s => s.InvoiceItems)
                 .HasForeignKey(ii => ii.ServiceId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.HasOne(ii => ii.Product)
+                .WithMany(p => p.InvoiceItems)
+                .HasForeignKey(ii => ii.ProductId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
         }

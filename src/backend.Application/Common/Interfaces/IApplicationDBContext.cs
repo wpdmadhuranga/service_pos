@@ -11,9 +11,11 @@ namespace backend.Application.Common.Interfaces
         IQueryable<Vehicle> Vehicles { get; }
         IQueryable<ServiceCategory> ServiceCategories { get; }
         IQueryable<Service> Services { get; }
+        IQueryable<Product> Products { get; }
         IQueryable<Invoice> Invoices { get; }
         IQueryable<InvoiceItem> InvoiceItems { get; }
         IQueryable<Payment> Payments { get; }
+        IQueryable<InventoryTransaction> InventoryTransactions { get; }
         IQueryable<User> Users { get; }
 
         void Add<TEntity>(TEntity entity) where TEntity : class;

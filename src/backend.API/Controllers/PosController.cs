@@ -1,5 +1,7 @@
 using backend.Application.Pos;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace backend.API.Controllers
 {
@@ -37,8 +39,15 @@ namespace backend.API.Controllers
         [HttpPost("invoices")]
         public async Task<ActionResult<PosInvoiceDetailDto>> CreateInvoice([FromBody] PosCreateInvoiceRequest request, CancellationToken cancellationToken)
         {
-            var result = await HandleAsync(() => _posService.CreateDraftInvoiceAsync(request, cancellationToken));
-            return Created($"/api/history/invoices/{result.Value!.Id}", result.Value);
+            try
+            {
+                var invoice = await _posService.CreateDraftInvoiceAsync(request, cancellationToken);
+                return Created($"/api/history/invoices/{invoice.Id}", invoice);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return ToErrorResult(exception);
+            }
         }
 
         [HttpPatch("invoices/{id:guid}")]
@@ -50,7 +59,8 @@ namespace backend.API.Controllers
         [HttpPost("invoices/{id:guid}/complete")]
         public async Task<ActionResult<PosInvoiceDetailDto>> CompleteInvoice(Guid id, CancellationToken cancellationToken)
         {
-            return await HandleAsync(() => _posService.CompleteInvoiceAsync(id, cancellationToken));
+            var userId = GetCurrentUserId();
+            return await HandleAsync(() => _posService.CompleteInvoiceAsync(id, userId, cancellationToken));
         }
 
         [HttpPost("invoices/{id:guid}/payments")]
@@ -92,6 +102,19 @@ namespace backend.API.Controllers
         {
             return message.Contains("not found", StringComparison.OrdinalIgnoreCase)
                 || message.Contains("was not found", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private Guid GetCurrentUserId()
+        {
+            var rawUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!Guid.TryParse(rawUserId, out var userId))
+            {
+                throw new InvalidOperationException("Authenticated user is required.");
+            }
+
+            return userId;
         }
     }
 }

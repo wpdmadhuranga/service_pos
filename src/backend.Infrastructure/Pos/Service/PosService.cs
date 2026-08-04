@@ -3,7 +3,10 @@ using backend.Application.Common.Interfaces;
 using backend.Application.Pos;
 using backend.Domain.Entities;
 using backend.Domain.Enums;
+// using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace backend.Infrastructure.Pos.Service
 {
@@ -29,6 +32,18 @@ namespace backend.Infrastructure.Pos.Service
                 .ThenBy(service => service.Name)
                 .ToListAsync(cancellationToken);
 
+            var products = await _db.Products
+                .AsNoTracking()
+                .Where(product => product.IsActive)
+                .OrderBy(product => product.Brand)
+                .ThenBy(product => product.Name)
+                .ToListAsync(cancellationToken);
+
+            var productsByServiceId = products
+                .Where(product => product.ServiceId.HasValue)
+                .GroupBy(product => product.ServiceId!.Value)
+                .ToDictionary(group => group.Key, group => group.ToList());
+
             return services
                 .GroupBy(service => new { service.CategoryId, service.Category.Name, service.Category.SortOrder })
                 .OrderBy(group => group.Key.SortOrder)
@@ -46,7 +61,15 @@ namespace backend.Infrastructure.Pos.Service
                         service.MinPrice,
                         service.MaxPrice,
                         service.Unit,
-                        service.SortOrder)).ToList()))
+                        service.SortOrder,
+                        productsByServiceId.TryGetValue(service.Id, out var serviceProducts)
+                            ? serviceProducts.Select(product => new PosProductDto(
+                                product.Id,
+                                product.Brand,
+                                product.Name,
+                                product.SellingPrice,
+                                product.StockQuantity)).ToList()
+                            : [])).ToList()))
                 .ToList();
         }
 
@@ -122,6 +145,8 @@ namespace backend.Infrastructure.Pos.Service
 
             ApplyTotals(invoice);
 
+            ValidateSoftStock(invoice.InvoiceItems);
+
             _db.Add(invoice);
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -159,12 +184,13 @@ namespace backend.Infrastructure.Pos.Service
             }
 
             ApplyTotals(invoice);
+            ValidateSoftStock(invoice.InvoiceItems);
             await _db.SaveChangesAsync(cancellationToken);
 
             return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
         }
 
-        public async Task<PosInvoiceDetailDto> CompleteInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default)
+        public async Task<PosInvoiceDetailDto> CompleteInvoiceAsync(Guid invoiceId, Guid userId, CancellationToken cancellationToken = default)
         {
             var invoice = await LoadInvoiceForEditAsync(invoiceId, cancellationToken)
                 ?? throw new InvalidOperationException("Invoice was not found.");
@@ -175,8 +201,13 @@ namespace backend.Infrastructure.Pos.Service
             }
 
             ApplyTotals(invoice);
-            invoice.Status = InvoiceStatus.Completed;
+            var stockIssues = await ValidateAndApplyStockOutAsync(invoice, userId, cancellationToken);
+            if (stockIssues.Count > 0)
+            {
+                throw new InvalidOperationException($"Insufficient stock: {string.Join(", ", stockIssues)}");
+            }
 
+            invoice.Status = InvoiceStatus.Completed;
             if (invoice.OdometerAtService.HasValue && invoice.OdometerAtService.Value > invoice.Vehicle.OdometerReading)
             {
                 invoice.Vehicle.OdometerReading = invoice.OdometerAtService.Value;
@@ -187,15 +218,25 @@ namespace backend.Infrastructure.Pos.Service
             return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
         }
 
-        public async Task<PosInvoiceDetailDto> RecordPaymentAsync(Guid invoiceId, PosRecordPaymentRequest request, CancellationToken cancellationToken = default)
+        public async Task<PosInvoiceDetailDto> RecordPaymentAsync(Guid invoiceId, PosRecordPaymentRequest request, CancellationToken cancellationToken)
         {
-            var invoice = await LoadInvoiceForEditAsync(invoiceId, cancellationToken)
+            var invoice = await _db.Invoices
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == invoiceId, cancellationToken)
                 ?? throw new InvalidOperationException("Invoice was not found.");
 
-            if (invoice.Status != InvoiceStatus.Completed)
-            {
-                throw new InvalidOperationException("Payments can only be recorded for completed invoices.");
-            }
+            if (invoice.Status == InvoiceStatus.Cancelled)
+                throw new InvalidOperationException("Cannot record payment on a cancelled invoice.");
+
+            if (invoice.Status == InvoiceStatus.Draft)
+                throw new InvalidOperationException("Invoice must be completed before recording payment.");
+
+            if (request.Amount <= 0)
+                throw new InvalidOperationException("Payment amount must be greater than zero.");
+
+            var remainingDue = invoice.Total - invoice.AmountPaid;
+            if (request.Amount > remainingDue)
+                throw new InvalidOperationException($"Payment amount ({request.Amount:C}) exceeds remaining due ({remainingDue:C}).");
 
             var payment = new Payment
             {
@@ -203,11 +244,20 @@ namespace backend.Infrastructure.Pos.Service
                 InvoiceId = invoice.Id,
                 Amount = request.Amount,
                 Method = request.Method,
-                PaidAt = NormalizeDateTime(request.PaidAt ?? DateTime.UtcNow),
+                PaidAt = DateTime.UtcNow,
                 ReferenceNo = request.ReferenceNo
             };
 
             _db.Add(payment);
+
+            invoice.AmountPaid += request.Amount;
+            invoice.PaymentStatus = invoice.AmountPaid >= invoice.Total
+                ? PaymentStatus.Paid
+                : invoice.AmountPaid > 0
+                    ? PaymentStatus.PartiallyPaid
+                    : PaymentStatus.Unpaid;
+            invoice.UpdatedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync(cancellationToken);
 
             return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
@@ -314,10 +364,36 @@ namespace backend.Infrastructure.Pos.Service
             foreach (var requestItem in requestItems)
             {
                 string nameSnapshot;
+                string? brandSnapshot = null;
                 decimal priceSnapshot;
                 Guid? serviceId = requestItem.ServiceId;
+                Guid? productId = requestItem.ProductId;
 
-                if (serviceId.HasValue)
+                if (productId.HasValue)
+                {
+                    var product = await _db.Products
+                        .Include(product => product.Service)
+                        .FirstOrDefaultAsync(item => item.Id == productId.Value && item.IsActive, cancellationToken)
+                        ?? throw new InvalidOperationException("One or more selected products were not found or are inactive.");
+
+                    if (serviceId.HasValue && product.ServiceId.HasValue && product.ServiceId.Value != serviceId.Value)
+                    {
+                        throw new InvalidOperationException($"Product '{product.Brand} {product.Name}' does not belong to the selected service.");
+                    }
+
+                    if (product.StockQuantity < requestItem.Quantity)
+                    {
+                        throw new InvalidOperationException($"Insufficient stock for product '{product.Brand} {product.Name}'.");
+                    }
+
+                    serviceId ??= product.ServiceId;
+
+                    nameSnapshot = product.Name;
+                    brandSnapshot = product.Brand;
+
+                    priceSnapshot = product.SellingPrice;
+                }
+                else if (serviceId.HasValue)
                 {
                     var service = await _db.Services.FirstOrDefaultAsync(item => item.Id == serviceId.Value && item.IsActive, cancellationToken)
                         ?? throw new InvalidOperationException("One or more selected services were not found or are inactive.");
@@ -368,6 +444,8 @@ namespace backend.Infrastructure.Pos.Service
                 {
                     Id = Guid.NewGuid(),
                     ServiceId = serviceId,
+                    ProductId = productId,
+                    BrandSnapshot = brandSnapshot,
                     NameSnapshot = nameSnapshot,
                     PriceSnapshot = priceSnapshot,
                     Quantity = requestItem.Quantity,
@@ -376,6 +454,97 @@ namespace backend.Infrastructure.Pos.Service
             }
 
             return items;
+        }
+
+        private void ValidateSoftStock(IEnumerable<InvoiceItem> items)
+        {
+            var productRequests = items
+                .Where(item => item.ProductId.HasValue)
+                .GroupBy(item => item.ProductId!.Value)
+                .Select(group => new { ProductId = group.Key, Quantity = group.Sum(item => item.Quantity) })
+                .ToList();
+
+            if (productRequests.Count == 0)
+            {
+                return;
+            }
+
+            var productIds = productRequests.Select(item => item.ProductId).ToList();
+            var products = _db.Products
+                .Where(product => productIds.Contains(product.Id))
+                .ToList();
+
+            var issues = new List<string>();
+            foreach (var request in productRequests)
+            {
+                var product = products.FirstOrDefault(item => item.Id == request.ProductId);
+                if (product is null || product.StockQuantity < request.Quantity)
+                {
+                    issues.Add(product is null
+                        ? request.ProductId.ToString()
+                        : $"{product.Brand} {product.Name} (requested {request.Quantity}, available {product.StockQuantity})");
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                throw new InvalidOperationException($"Insufficient stock: {string.Join(", ", issues)}");
+            }
+        }
+
+        private async Task<List<string>> ValidateAndApplyStockOutAsync(Invoice invoice, Guid userId, CancellationToken cancellationToken)
+        {
+            var issues = new List<string>();
+            var productRequests = invoice.InvoiceItems
+                .Where(item => item.ProductId.HasValue)
+                .GroupBy(item => item.ProductId!.Value)
+                .Select(group => new { ProductId = group.Key, Quantity = group.Sum(item => item.Quantity) })
+                .ToList();
+
+            if (productRequests.Count == 0)
+            {
+                return issues;
+            }
+
+            var productIds = productRequests.Select(item => item.ProductId).ToList();
+            var products = await _db.Products
+                .Where(product => productIds.Contains(product.Id))
+                .ToListAsync(cancellationToken);
+
+            foreach (var request in productRequests)
+            {
+                var product = products.FirstOrDefault(item => item.Id == request.ProductId);
+                if (product is null || product.StockQuantity < request.Quantity)
+                {
+                    issues.Add(product is null
+                        ? request.ProductId.ToString()
+                        : $"{product.Brand} {product.Name} (requested {request.Quantity}, available {product.StockQuantity})");
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                return issues;
+            }
+
+            foreach (var request in productRequests)
+            {
+                var product = products.First(item => item.Id == request.ProductId);
+                product.StockQuantity -= request.Quantity;
+
+                _db.Add(new InventoryTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = product.Id,
+                    Type = InventoryTransactionType.StockOut,
+                    Quantity = request.Quantity,
+                    InvoiceId = invoice.Id,
+                    UserId = userId,
+                    Notes = $"Stock out from invoice {invoice.InvoiceNumber}"
+                });
+            }
+
+            return issues;
         }
 
         private static void ApplyTotals(Invoice invoice)
@@ -473,6 +642,8 @@ namespace backend.Infrastructure.Pos.Service
                     .Select(item => new PosInvoiceItemDto(
                         item.Id,
                         item.ServiceId,
+                        item.ProductId,
+                        item.BrandSnapshot,
                         item.NameSnapshot,
                         item.PriceSnapshot,
                         item.Quantity,
@@ -523,5 +694,6 @@ namespace backend.Infrastructure.Pos.Service
                 _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
             };
         }
+
     }
 }

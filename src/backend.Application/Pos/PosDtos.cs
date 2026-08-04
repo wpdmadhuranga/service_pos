@@ -18,7 +18,15 @@ namespace backend.Application.Pos
         decimal? MinPrice,
         decimal? MaxPrice,
         string? Unit,
-        int SortOrder);
+        int SortOrder,
+        IReadOnlyList<PosProductDto> Products);
+
+    public sealed record PosProductDto(
+        Guid Id,
+        string Brand,
+        string Name,
+        decimal SellingPrice,
+        int StockQuantity);
 
     public sealed record PosCustomerSearchResultDto(
         Guid Id,
@@ -83,6 +91,7 @@ namespace backend.Application.Pos
     public sealed record PosInvoiceItemInput : IValidatableObject
     {
         public Guid? ServiceId { get; init; }
+        public Guid? ProductId { get; init; }
 
         [StringLength(150)]
         public string? Name { get; init; }
@@ -95,6 +104,11 @@ namespace backend.Application.Pos
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (ServiceId is null && ProductId is not null)
+            {
+                yield return new ValidationResult("ProductId requires ServiceId.", new[] { nameof(ServiceId), nameof(ProductId) });
+            }
+
             if (ServiceId is null)
             {
                 if (string.IsNullOrWhiteSpace(Name))
@@ -215,6 +229,8 @@ namespace backend.Application.Pos
     public sealed record PosInvoiceItemDto(
         Guid Id,
         Guid? ServiceId,
+        Guid? ProductId,
+        string? BrandSnapshot,
         string NameSnapshot,
         decimal PriceSnapshot,
         int Quantity,

@@ -1,7 +1,6 @@
+using backend.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using backend.Domain.Entities.Inventory;
-using backend.Domain.Entities;
 
 namespace backend.Persistence.Configurations.Inventory
 {
@@ -13,31 +12,29 @@ namespace backend.Persistence.Configurations.Inventory
             builder.HasKey(t => t.Id);
 
             builder.Property(t => t.Type).HasConversion<string>().HasMaxLength(20);
-            builder.Property(t => t.Quantity).HasColumnType("decimal(10,2)");
-            builder.Property(t => t.Note).HasMaxLength(500);
+            builder.Property(t => t.Quantity);
+            builder.Property(t => t.Notes).HasMaxLength(500);
 
-            builder.HasIndex(t => t.InventoryItemId);
+            builder.HasIndex(t => t.ProductId);
+            builder.HasIndex(t => t.InvoiceId);
+            builder.HasIndex(t => t.UserId);
             builder.HasIndex(t => t.CreatedAt);
 
-            // Ledger entries should never disappear - restrict delete of the parent item.
-            builder.HasOne(t => t.InventoryItem)
-                .WithMany(i => i.Transactions)
-                .HasForeignKey(t => t.InventoryItemId)
+            builder.HasOne(t => t.Product)
+                .WithMany(p => p.InventoryTransactions)
+                .HasForeignKey(t => t.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Cross-schema link to service_center.InvoiceItems - no inverse
-            // navigation added there, so InvoiceItem.cs stays untouched.
-            builder.HasOne<InvoiceItem>()
+            builder.HasOne(t => t.User)
                 .WithMany()
-                .HasForeignKey(t => t.ReferenceInvoiceItemId)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(t => t.Invoice)
+                .WithMany()
+                .HasForeignKey(t => t.InvoiceId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
-
-            // Cross-schema link to service_center.Users - who recorded this transaction.
-            builder.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(t => t.CreatedBy)
-                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

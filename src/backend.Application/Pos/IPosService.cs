@@ -7,7 +7,7 @@ namespace backend.Application.Pos
         Task<IReadOnlyList<PosVehicleDto>> GetCustomerVehiclesAsync(Guid customerId, CancellationToken cancellationToken = default);
         Task<PosInvoiceDetailDto> CreateDraftInvoiceAsync(PosCreateInvoiceRequest request, CancellationToken cancellationToken = default);
         Task<PosInvoiceDetailDto> UpdateDraftInvoiceAsync(Guid invoiceId, PosUpdateDraftInvoiceRequest request, CancellationToken cancellationToken = default);
-        Task<PosInvoiceDetailDto> CompleteInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default);
+        Task<PosInvoiceDetailDto> CompleteInvoiceAsync(Guid invoiceId, Guid userId, CancellationToken cancellationToken = default);
         Task<PosInvoiceDetailDto> RecordPaymentAsync(Guid invoiceId, PosRecordPaymentRequest request, CancellationToken cancellationToken = default);
         Task<PosInvoiceDetailDto> CancelInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default);
     }

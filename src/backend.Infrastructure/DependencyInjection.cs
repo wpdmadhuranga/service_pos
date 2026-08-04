@@ -9,6 +9,7 @@ using backend.Infrastructure.Auth.Service;
 using backend.Infrastructure.Pos.Service;
 using backend.Infrastructure.History.Service;
 using backend.Infrastructure.Services;
+using backend.Infrastructure.Inventory.Service;
 
 
 namespace backend.Infrastructure
@@ -28,6 +29,7 @@ namespace backend.Infrastructure
             services.AddScoped<IPosService, PosService>();
             services.AddScoped<IHistoryService, HistoryService>();
             services.AddScoped<IServiceAdminService, ServiceAdminService>();
+            services.AddScoped<IInventoryService, InventoryService>();
 
             return services;
         }

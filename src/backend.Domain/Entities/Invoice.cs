@@ -20,6 +20,8 @@ namespace backend.Domain.Entities
         public decimal Total { get; set; }
 
         public string? Notes { get; set; }
+        public decimal AmountPaid { get; set; } = 0m;
+        public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

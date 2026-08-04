@@ -287,31 +287,22 @@ namespace backend.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(10,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<Guid?>("ReferenceInvoiceItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("CreatedBy");
-
                     b.HasIndex("InventoryItemId");
 
-                    b.HasIndex("ReferenceInvoiceItemId");
-
-                    b.ToTable("InventoryTransactions", "inventory");
+                    b.ToTable("InventoryTransaction", "service_center");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Inventory.InvoiceItemInventoryUsage", b =>
@@ -361,6 +352,49 @@ namespace backend.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ServiceInventoryMappings", "inventory");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("InventoryTransactions", "inventory");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Invoice", b =>
@@ -435,6 +469,10 @@ namespace backend.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BrandSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid>("InvoiceId")
                         .HasColumnType("uuid");
 
@@ -449,6 +487,9 @@ namespace backend.Persistence.Migrations
                     b.Property<decimal>("PriceSnapshot")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Quantity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -460,6 +501,8 @@ namespace backend.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("InvoiceId");
+
+                    b.HasIndex("ProductId");
 
                     b.HasIndex("ServiceId");
 
@@ -495,6 +538,66 @@ namespace backend.Persistence.Migrations
                     b.HasIndex("InvoiceId");
 
                     b.ToTable("Payments", "service_center");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CompatibleVehicleType")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<decimal>("CostPrice")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("PartNumber")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<decimal>("SellingPrice")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("StockQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("ServiceId");
+
+                    b.HasIndex("ServiceId", "Brand", "Name");
+
+                    b.ToTable("Products", "inventory");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Service", b =>
@@ -679,22 +782,11 @@ namespace backend.Persistence.Migrations
 
             modelBuilder.Entity("backend.Domain.Entities.Inventory.InventoryTransaction", b =>
                 {
-                    b.HasOne("backend.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("backend.Domain.Entities.Inventory.InventoryItem", "InventoryItem")
                         .WithMany("Transactions")
                         .HasForeignKey("InventoryItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("backend.Domain.Entities.InvoiceItem", null)
-                        .WithMany()
-                        .HasForeignKey("ReferenceInvoiceItemId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("InventoryItem");
                 });
@@ -737,6 +829,32 @@ namespace backend.Persistence.Migrations
                     b.Navigation("Service");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("backend.Domain.Entities.Product", "Product")
+                        .WithMany("InventoryTransactions")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.Invoice", b =>
                 {
                     b.HasOne("backend.Domain.Entities.Customer", "Customer")
@@ -772,12 +890,19 @@ namespace backend.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("backend.Domain.Entities.Product", "Product")
+                        .WithMany("InvoiceItems")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("backend.Domain.Entities.Service", "Service")
                         .WithMany("InvoiceItems")
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Invoice");
+
+                    b.Navigation("Product");
 
                     b.Navigation("Service");
                 });
@@ -791,6 +916,16 @@ namespace backend.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.Product", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Service", b =>
@@ -836,6 +971,13 @@ namespace backend.Persistence.Migrations
                     b.Navigation("InvoiceItems");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.Product", b =>
+                {
+                    b.Navigation("InventoryTransactions");
+
+                    b.Navigation("InvoiceItems");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Service", b =>

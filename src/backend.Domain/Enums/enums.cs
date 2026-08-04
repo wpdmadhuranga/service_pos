@@ -25,4 +25,11 @@ namespace backend.Domain.Enums
         Admin,
         Staff
     }
+
+    public enum PaymentStatus
+    {
+        Unpaid,
+        PartiallyPaid,
+        Paid
+    }
 }
