@@ -167,6 +167,8 @@ namespace backend.Application.Pos
                 yield return new ValidationResult("Provide either VehicleId or Vehicle, not both.", new[] { nameof(VehicleId), nameof(Vehicle) });
             }
         }
+
+        public PosRecordPaymentRequest? InitialPayment { get; init; }
     }
 
     public sealed record PosUpdateDraftInvoiceRequest : IValidatableObject
@@ -264,4 +266,6 @@ namespace backend.Application.Pos
         PosInvoiceVehicleDto Vehicle,
         IReadOnlyList<PosInvoiceItemDto> Items,
         IReadOnlyList<PosPaymentDto> Payments);
+
+
 }

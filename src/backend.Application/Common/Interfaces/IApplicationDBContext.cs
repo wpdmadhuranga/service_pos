@@ -12,7 +12,9 @@ namespace backend.Application.Common.Interfaces
         IQueryable<ServiceCategory> ServiceCategories { get; }
         IQueryable<Service> Services { get; }
         IQueryable<Product> Products { get; }
-        IQueryable<Invoice> Invoices { get; }
+        IQueryable<Invoice> Invoices { get;}
+        
+
         IQueryable<InvoiceItem> InvoiceItems { get; }
         IQueryable<Payment> Payments { get; }
         IQueryable<InventoryTransaction> InventoryTransactions { get; }

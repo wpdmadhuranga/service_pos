@@ -119,40 +119,77 @@ namespace backend.Infrastructure.Pos.Service
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<PosInvoiceDetailDto> CreateDraftInvoiceAsync(PosCreateInvoiceRequest request, CancellationToken cancellationToken = default)
+        public async Task<PosInvoiceDetailDto> CreateDraftInvoiceAsync(
+    PosCreateInvoiceRequest request,
+    CancellationToken cancellationToken = default)
+{
+    var user = await _db.Users
+        .FirstOrDefaultAsync(item => item.Id == request.UserId, cancellationToken)
+        ?? throw new InvalidOperationException("User was not found.");
+
+    var (customer, vehicle) = await ResolveCustomerAndVehicleAsync(request, cancellationToken);
+
+    var invoiceItems = await BuildInvoiceItemsAsync(request.Items, cancellationToken);
+
+    var invoiceNumber = await GenerateInvoiceNumberAsync(cancellationToken);
+
+    var invoice = new Invoice
+    {
+        Id = Guid.NewGuid(),
+        InvoiceNumber = invoiceNumber,
+        CustomerId = customer.Id,
+        VehicleId = vehicle.Id,
+        UserId = user.Id,
+        OdometerAtService = request.OdometerAtService,
+        Status = InvoiceStatus.Completed, // Change from Draft if payment can happen immediately
+        Discount = 0m,
+        Tax = 0m,
+        Notes = request.Notes,
+        InvoiceItems = invoiceItems,
+        AmountPaid = 0
+    };
+
+    ApplyTotals(invoice);
+
+    ValidateSoftStock(invoice.InvoiceItems);
+
+    if (request.InitialPayment is not null)
+    {
+        if (request.InitialPayment.Amount > invoice.Total)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(item => item.Id == request.UserId, cancellationToken)
-                ?? throw new InvalidOperationException("User was not found.");
-
-            var (customer, vehicle) = await ResolveCustomerAndVehicleAsync(request, cancellationToken);
-            var invoiceItems = await BuildInvoiceItemsAsync(request.Items, cancellationToken);
-            var invoiceNumber = await GenerateInvoiceNumberAsync(cancellationToken);
-
-            var invoice = new Invoice
-            {
-                Id = Guid.NewGuid(),
-                InvoiceNumber = invoiceNumber,
-                CustomerId = customer.Id,
-                VehicleId = vehicle.Id,
-                UserId = user.Id,
-                OdometerAtService = request.OdometerAtService,
-                Status = InvoiceStatus.Draft,
-                Discount = 0m,
-                Tax = 0m,
-                Notes = request.Notes,
-                InvoiceItems = invoiceItems
-            };
-
-            ApplyTotals(invoice);
-
-            ValidateSoftStock(invoice.InvoiceItems);
-
-            _db.Add(invoice);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
+            throw new InvalidOperationException("Payment amount exceeds invoice total.");
         }
 
+        invoice.AmountPaid = request.InitialPayment.Amount;
+
+        invoice.PaymentStatus =
+            invoice.AmountPaid >= invoice.Total
+                ? PaymentStatus.Paid
+                : invoice.AmountPaid > 0
+                    ? PaymentStatus.PartiallyPaid
+                    : PaymentStatus.Unpaid;
+
+        invoice.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = invoice.Id,
+            Amount = request.InitialPayment.Amount,
+            Method = request.InitialPayment.Method,
+            PaidAt = request.InitialPayment.PaidAt ?? DateTime.UtcNow,
+            ReferenceNo = request.InitialPayment.ReferenceNo
+        });
+    }
+    else
+    {
+        invoice.PaymentStatus = PaymentStatus.Unpaid;
+    }
+
+    _db.Add(invoice);
+
+    await _db.SaveChangesAsync(cancellationToken);
+
+    return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
+}
         public async Task<PosInvoiceDetailDto> UpdateDraftInvoiceAsync(Guid invoiceId, PosUpdateDraftInvoiceRequest request, CancellationToken cancellationToken = default)
         {
             var invoice = await LoadInvoiceForEditAsync(invoiceId, cancellationToken)

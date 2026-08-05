@@ -4,6 +4,7 @@ using backend.Domain.Entities;
 using backend.Domain.Entities.History;
 using backend.Domain.Entities.Audit;
 
+
 namespace backend.Persistence.Context
 {
     public class ApplicationDbContext : DbContext, IApplicationDbContext
