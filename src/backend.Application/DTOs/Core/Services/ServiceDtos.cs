@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using backend.Domain.Enums;
+using backend.Application.DTOs.Core.ServiceCategory;
+using backend.Application.DTOs.Inventory.Products;
 
-namespace backend.Application.DTOs.Services
+namespace backend.Application.DTOs.Core.Services
 {
     public sealed record ServiceDto(
         Guid Id,
@@ -95,4 +97,28 @@ namespace backend.Application.DTOs.Services
             }
         }
     }
+
+    // public sealed record serviceGetAllResponse(
+        
+    //     IEnumerable<ServiceDto> Services);
+
+    //     IEnumerable<ProductDto> Products);
+
+     public class ServiceGetDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public decimal DefaultPrice { get; set; }
+        public string PricingType { get; set; } = string.Empty; // enum -> string
+        public decimal? MinPrice { get; set; }
+        public decimal? MaxPrice { get; set; }
+        public string? Unit { get; set; }
+        public bool IsActive { get; set; }
+        public int SortOrder { get; set; }
+
+        public ServiceCategoryDto Category { get; set; } = null!;
+        public List<ProductDto> Products { get; set; } = new();
+    }
+
 }

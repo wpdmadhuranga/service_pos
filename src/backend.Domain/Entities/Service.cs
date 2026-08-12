@@ -22,5 +22,6 @@ namespace backend.Domain.Entities
         // Navigation
         public ServiceCategory Category { get; set; } = null!;
         public ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();
+        public ICollection<Product> Products { get; set; } = new List<Product>();
     }
 }

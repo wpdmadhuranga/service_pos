@@ -1,8 +1,10 @@
 using backend.Application.Common.Interfaces;
-using backend.Application.DTOs.Services;
+using backend.Application.DTOs.Core.Services;
 using backend.Application.Services;
 using backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using backend.Application.DTOs.Core.ServiceCategory;
+using backend.Application.DTOs.Inventory.Products;
 
 namespace backend.Infrastructure.Services
 {
@@ -142,5 +144,72 @@ namespace backend.Infrastructure.Services
                 service.IsActive,
                 service.SortOrder);
         }
-    }
-}
+    
+
+    // public async Task<IEnumerable<ServiceDto>> GetAllAsync(CancellationToken cancellationToken = default)
+    //     {
+    //         var services = await _db.Services
+    //             .AsNoTracking()
+    //             .Include(item => item.Category)
+    //             .ToListAsync(cancellationToken);
+
+    //         return services.Select(service => new ServiceDto(
+    //             service.Id,
+    //             service.CategoryId,
+    //             service.Category.Name,
+    //             service.Name,
+    //             service.Description,
+    //             service.DefaultPrice,
+    //             service.PricingType,
+    //             service.MinPrice,
+    //             service.MaxPrice,
+    //             service.Unit,
+    //             service.IsActive,
+    //             service.SortOrder));
+    //     } 
+
+         public async Task<List<ServiceGetDto>> GetAllAsync()
+        {
+            var services = await _db.Services
+                .AsNoTracking()
+                .Include(s => s.Category)
+                .Include(s => s.Products)
+                .OrderBy(s => s.Category.SortOrder)
+                .ThenBy(s => s.SortOrder)
+                .Select(s => new ServiceGetDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Description = s.Description,
+                    DefaultPrice = s.DefaultPrice,
+                    PricingType = s.PricingType.ToString(),
+                    MinPrice = s.MinPrice,
+                    MaxPrice = s.MaxPrice,
+                    Unit = s.Unit,
+                    IsActive = s.IsActive,
+                    SortOrder = s.SortOrder,
+                    Category = new ServiceCategoryDto
+                    {
+                        Id = s.Category.Id,
+                        Name = s.Category.Name,
+                        SortOrder = s.Category.SortOrder
+                    },
+                    Products = s.Products.Select(p => new ProductDto
+                    {
+                        Id = p.Id,
+                        Brand = p.Brand,
+                        Name = p.Name,
+                        PartNumber = p.PartNumber,
+                        CompatibleVehicleType = p.CompatibleVehicleType,
+                        CostPrice = p.CostPrice,
+                        SellingPrice = p.SellingPrice,
+                        StockQuantity = p.StockQuantity,
+                        Unit = p.Unit,
+                        IsActive = p.IsActive
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return services;
+        }  
+}}

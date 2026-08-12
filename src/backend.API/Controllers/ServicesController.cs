@@ -1,4 +1,4 @@
-using backend.Application.DTOs.Services;
+using backend.Application.DTOs.Core.Services;
 using backend.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +13,15 @@ namespace backend.API.Controllers
         public ServicesController(IServiceAdminService serviceAdminService)
         {
             _serviceAdminService = serviceAdminService;
+        }
+
+         // GET: api/services
+        [HttpGet]
+        [ProducesResponseType(typeof(List<ServiceGetDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<ServiceGetDto>>> GetAllServices()
+        {
+            var services = await _serviceAdminService.GetAllAsync();
+            return Ok(services);
         }
 
         [HttpPost]

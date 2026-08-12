@@ -3,13 +3,14 @@ using Microsoft.Extensions.DependencyInjection;
 using backend.Application.Services;
 using backend.Application.Pos;
 using backend.Application.History;
-using backend.Application.DTOs.Services;
+using backend.Application.DTOs.Core.Services;
 using backend.Application.Common.Interfaces;
 using backend.Infrastructure.Auth.Service;
 using backend.Infrastructure.Pos.Service;
 using backend.Infrastructure.History.Service;
 using backend.Infrastructure.Services;
 using backend.Infrastructure.Inventory.Service;
+
 
 
 namespace backend.Infrastructure
@@ -30,6 +31,7 @@ namespace backend.Infrastructure
             services.AddScoped<IHistoryService, HistoryService>();
             services.AddScoped<IServiceAdminService, ServiceAdminService>();
             services.AddScoped<IInventoryService, InventoryService>();
+            
 
             return services;
         }

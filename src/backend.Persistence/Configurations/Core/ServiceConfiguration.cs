@@ -30,7 +30,14 @@ namespace ServiceCenterApi.Data.Configurations
             builder.HasMany(s => s.InvoiceItems)
                 .WithOne(ii => ii.Service)
                 .HasForeignKey(ii => ii.ServiceId)
-                .OnDelete(DeleteBehavior.SetNull); // keep the invoice item if the service is later removed
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.HasMany(s => s.Products)
+               .WithOne(p => p.Service)
+               .HasForeignKey(p => p.ServiceId)
+               .OnDelete(DeleteBehavior.SetNull);
+
+
         }
     }
 }

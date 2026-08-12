@@ -1,4 +1,4 @@
-using backend.Application.DTOs.Services;
+using backend.Application.DTOs.Core.Services;
 
 namespace backend.Application.Services
 {
@@ -6,5 +6,7 @@ namespace backend.Application.Services
     {
         Task<ServiceDto> CreateAsync(ServiceCreateRequest request, CancellationToken cancellationToken = default);
         Task<ServiceDto> UpdateAsync(Guid id, ServiceUpdateRequest request, CancellationToken cancellationToken = default);
+
+        Task<List<ServiceGetDto>> GetAllAsync();
     }
 }
