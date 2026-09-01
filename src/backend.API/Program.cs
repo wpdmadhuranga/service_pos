@@ -10,16 +10,12 @@ using backend.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers();
-builder.Services.AddPersistence(builder.Configuration);      // you already have this
-builder.Services.AddInfrastructure(builder.Configuration);   // new - registers auth services
+builder.Services.AddPersistence(builder.Configuration);      
+builder.Services.AddInfrastructure(builder.Configuration);   
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(options =>
@@ -44,10 +40,10 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowExpoWeb",
+    options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.WithOrigins("http://localhost:8081") // Allow Expo web development server
+            policy.AllowAnyOrigin() // හෝ .WithOrigins("http://localhost:8081", "http://10.0.2.2:8081")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -58,35 +54,21 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-app.UseCors("AllowExpoWeb");
+app.UseCors("AllowAll");
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 };
 
-// app.MapGet("/weatherforecast", () =>
-// {
-//     var forecast =  Enumerable.Range(1, 5).Select(index =>
-//         new WeatherForecast
-//         (
-//             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-//             Random.Shared.Next(-20, 55),
-//             summaries[Random.Shared.Next(summaries.Length)]
-//         ))
-//         .ToArray();
-//     return forecast;
-// })
-// .WithName("GetWeatherForecast");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -111,7 +93,7 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "❌ Database connection failed.");
     }
 }
-app.UseAuthentication();   // must come before UseAuthorization
+app.UseAuthentication();   
 app.UseAuthorization();
 app.MapControllers();
 

@@ -42,10 +42,10 @@ namespace backend.Application.DTOs.Inventory
         [StringLength(60)]
         public string? CompatibleVehicleType { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal CostPrice { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal SellingPrice { get; init; }
 
         [Range(0, int.MaxValue)]
@@ -73,10 +73,10 @@ namespace backend.Application.DTOs.Inventory
         [StringLength(60)]
         public string? CompatibleVehicleType { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? CostPrice { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? SellingPrice { get; init; }
 
         [Range(0, int.MaxValue)]

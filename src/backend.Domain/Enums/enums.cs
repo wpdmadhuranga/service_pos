@@ -15,9 +15,9 @@ namespace backend.Domain.Enums
 
     public enum PaymentMethod
     {
-        Cash,
-        Card,
-        BankTransfer
+        Cash = 0,
+        Card = 1,
+        BankTransfer = 2
     }
 
     public enum UserRole

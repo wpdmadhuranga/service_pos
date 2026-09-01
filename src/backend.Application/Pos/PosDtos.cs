@@ -78,7 +78,7 @@ namespace backend.Application.Pos
         [StringLength(60)]
         public string? Model { get; init; }
 
-        [Range(1886, 3000)]
+        // [Range(1886, 3000)]
         public int? Year { get; init; }
 
         [StringLength(30)]
@@ -96,7 +96,7 @@ namespace backend.Application.Pos
         [StringLength(150)]
         public string? Name { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? Price { get; init; }
 
         [Range(1, int.MaxValue)]
@@ -192,7 +192,7 @@ namespace backend.Application.Pos
 
     public sealed record PosRecordPaymentRequest : IValidatableObject
     {
-        [Range(typeof(decimal), "0.01", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0.01", "79228162514264337593543950335")]
         public decimal Amount { get; init; }
 
         [Required]

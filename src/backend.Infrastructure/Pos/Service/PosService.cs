@@ -3,7 +3,6 @@ using backend.Application.Common.Interfaces;
 using backend.Application.Pos;
 using backend.Domain.Entities;
 using backend.Domain.Enums;
-// using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -122,74 +121,74 @@ namespace backend.Infrastructure.Pos.Service
         public async Task<PosInvoiceDetailDto> CreateDraftInvoiceAsync(
     PosCreateInvoiceRequest request,
     CancellationToken cancellationToken = default)
-{
-    var user = await _db.Users
-        .FirstOrDefaultAsync(item => item.Id == request.UserId, cancellationToken)
-        ?? throw new InvalidOperationException("User was not found.");
-
-    var (customer, vehicle) = await ResolveCustomerAndVehicleAsync(request, cancellationToken);
-
-    var invoiceItems = await BuildInvoiceItemsAsync(request.Items, cancellationToken);
-
-    var invoiceNumber = await GenerateInvoiceNumberAsync(cancellationToken);
-
-    var invoice = new Invoice
-    {
-        Id = Guid.NewGuid(),
-        InvoiceNumber = invoiceNumber,
-        CustomerId = customer.Id,
-        VehicleId = vehicle.Id,
-        UserId = user.Id,
-        OdometerAtService = request.OdometerAtService,
-        Status = InvoiceStatus.Completed, // Change from Draft if payment can happen immediately
-        Discount = 0m,
-        Tax = 0m,
-        Notes = request.Notes,
-        InvoiceItems = invoiceItems,
-        AmountPaid = 0
-    };
-
-    ApplyTotals(invoice);
-
-    ValidateSoftStock(invoice.InvoiceItems);
-
-    if (request.InitialPayment is not null)
-    {
-        if (request.InitialPayment.Amount > invoice.Total)
         {
-            throw new InvalidOperationException("Payment amount exceeds invoice total.");
+            var user = await _db.Users
+                .FirstOrDefaultAsync(item => item.Id == request.UserId, cancellationToken)
+                ?? throw new InvalidOperationException("User was not found.");
+
+            var (customer, vehicle) = await ResolveCustomerAndVehicleAsync(request, cancellationToken);
+
+            var invoiceItems = await BuildInvoiceItemsAsync(request.Items, cancellationToken);
+
+            var invoiceNumber = await GenerateInvoiceNumberAsync(cancellationToken);
+
+            var invoice = new Invoice
+            {
+                Id = Guid.NewGuid(),
+                InvoiceNumber = invoiceNumber,
+                CustomerId = customer.Id,
+                VehicleId = vehicle.Id,
+                UserId = user.Id,
+                OdometerAtService = request.OdometerAtService,
+                Status = InvoiceStatus.Completed, 
+                Discount = 0m,
+                Tax = 0m,
+                Notes = request.Notes,
+                InvoiceItems = invoiceItems,
+                AmountPaid = 0
+            };
+
+            ApplyTotals(invoice);
+
+            ValidateSoftStock(invoice.InvoiceItems);
+
+            if (request.InitialPayment is not null)
+            {
+                if (request.InitialPayment.Amount > invoice.Total)
+                {
+                    throw new InvalidOperationException("Payment amount exceeds invoice total.");
+                }
+
+                invoice.AmountPaid = request.InitialPayment.Amount;
+
+                invoice.PaymentStatus =
+                    invoice.AmountPaid >= invoice.Total
+                        ? PaymentStatus.Paid
+                        : invoice.AmountPaid > 0
+                            ? PaymentStatus.PartiallyPaid
+                            : PaymentStatus.Unpaid;
+
+                invoice.Payments.Add(new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    InvoiceId = invoice.Id,
+                    Amount = request.InitialPayment.Amount,
+                    Method = request.InitialPayment.Method,
+                    PaidAt = request.InitialPayment.PaidAt ?? DateTime.UtcNow,
+                    ReferenceNo = request.InitialPayment.ReferenceNo
+                });
+            }
+            else
+            {
+                invoice.PaymentStatus = PaymentStatus.Unpaid;
+            }
+
+            _db.Add(invoice);
+
+            await _db.SaveChangesAsync(cancellationToken);
+
+            return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
         }
-
-        invoice.AmountPaid = request.InitialPayment.Amount;
-
-        invoice.PaymentStatus =
-            invoice.AmountPaid >= invoice.Total
-                ? PaymentStatus.Paid
-                : invoice.AmountPaid > 0
-                    ? PaymentStatus.PartiallyPaid
-                    : PaymentStatus.Unpaid;
-
-        invoice.Payments.Add(new Payment
-        {
-            Id = Guid.NewGuid(),
-            InvoiceId = invoice.Id,
-            Amount = request.InitialPayment.Amount,
-            Method = request.InitialPayment.Method,
-            PaidAt = request.InitialPayment.PaidAt ?? DateTime.UtcNow,
-            ReferenceNo = request.InitialPayment.ReferenceNo
-        });
-    }
-    else
-    {
-        invoice.PaymentStatus = PaymentStatus.Unpaid;
-    }
-
-    _db.Add(invoice);
-
-    await _db.SaveChangesAsync(cancellationToken);
-
-    return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
-}
         public async Task<PosInvoiceDetailDto> UpdateDraftInvoiceAsync(Guid invoiceId, PosUpdateDraftInvoiceRequest request, CancellationToken cancellationToken = default)
         {
             var invoice = await LoadInvoiceForEditAsync(invoiceId, cancellationToken)
@@ -327,17 +326,24 @@ namespace backend.Infrastructure.Pos.Service
             }
             else if (request.Customer is not null)
             {
-                customer = new Customer
-                {
-                    Id = Guid.NewGuid(),
-                    Name = request.Customer.Name.Trim(),
-                    Phone = request.Customer.Phone.Trim(),
-                    Email = string.IsNullOrWhiteSpace(request.Customer.Email) ? null : request.Customer.Email.Trim(),
-                    Address = string.IsNullOrWhiteSpace(request.Customer.Address) ? null : request.Customer.Address.Trim(),
-                    Notes = string.IsNullOrWhiteSpace(request.Customer.Notes) ? null : request.Customer.Notes.Trim()
-                };
+                var trimmedPhone = request.Customer.Phone.Trim();
 
-                _db.Add(customer);
+                customer = await _db.Customers.FirstOrDefaultAsync(item => item.Phone == trimmedPhone, cancellationToken);
+
+                if (customer is null)
+                {
+                    customer = new Customer
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = request.Customer.Name.Trim(),
+                        Phone = trimmedPhone,
+                        Email = string.IsNullOrWhiteSpace(request.Customer.Email) ? null : request.Customer.Email.Trim(),
+                        Address = string.IsNullOrWhiteSpace(request.Customer.Address) ? null : request.Customer.Address.Trim(),
+                        Notes = string.IsNullOrWhiteSpace(request.Customer.Notes) ? null : request.Customer.Notes.Trim()
+                    };
+
+                    _db.Add(customer);
+                }
             }
 
             Vehicle? vehicle = null;
@@ -353,31 +359,45 @@ namespace backend.Infrastructure.Pos.Service
                 throw new InvalidOperationException("The selected vehicle does not belong to the selected customer.");
             }
 
+            if (vehicle is null && request.Vehicle is not null)
+            {
+                var normalizedPlateNumber = request.Vehicle.PlateNumber.Trim();
+
+                vehicle = await _db.Vehicles.FirstOrDefaultAsync(item => item.PlateNumber == normalizedPlateNumber, cancellationToken);
+
+                if (vehicle is not null)
+                {
+                    if (customer is not null && vehicle.CustomerId != customer.Id)
+                    {
+                        throw new InvalidOperationException("This vehicle is already registered under a different customer.");
+                    }
+                }
+                else
+                {
+                    if (customer is null)
+                    {
+                        throw new InvalidOperationException("A customer must be available before creating a new vehicle.");
+                    }
+
+                    vehicle = new Vehicle
+                    {
+                        Id = Guid.NewGuid(),
+                        CustomerId = customer.Id,
+                        PlateNumber = normalizedPlateNumber,
+                        Make = string.IsNullOrWhiteSpace(request.Vehicle.Make) ? null : request.Vehicle.Make.Trim(),
+                        Model = string.IsNullOrWhiteSpace(request.Vehicle.Model) ? null : request.Vehicle.Model.Trim(),
+                        Year = request.Vehicle.Year,
+                        VehicleType = string.IsNullOrWhiteSpace(request.Vehicle.VehicleType) ? null : request.Vehicle.VehicleType.Trim(),
+                        OdometerReading = request.Vehicle.OdometerReading ?? 0
+                    };
+
+                    _db.Add(vehicle);
+                }
+            }
+
             if (vehicle is null)
             {
-                if (request.Vehicle is null)
-                {
-                    throw new InvalidOperationException("Vehicle details are required when VehicleId is not supplied.");
-                }
-
-                if (customer is null)
-                {
-                    throw new InvalidOperationException("A customer must be available before creating a new vehicle.");
-                }
-
-                vehicle = new Vehicle
-                {
-                    Id = Guid.NewGuid(),
-                    CustomerId = customer.Id,
-                    PlateNumber = request.Vehicle.PlateNumber.Trim(),
-                    Make = string.IsNullOrWhiteSpace(request.Vehicle.Make) ? null : request.Vehicle.Make.Trim(),
-                    Model = string.IsNullOrWhiteSpace(request.Vehicle.Model) ? null : request.Vehicle.Model.Trim(),
-                    Year = request.Vehicle.Year,
-                    VehicleType = string.IsNullOrWhiteSpace(request.Vehicle.VehicleType) ? null : request.Vehicle.VehicleType.Trim(),
-                    OdometerReading = request.Vehicle.OdometerReading ?? 0
-                };
-
-                _db.Add(vehicle);
+                throw new InvalidOperationException("Vehicle details are required when VehicleId is not supplied.");
             }
 
             if (customer is null)

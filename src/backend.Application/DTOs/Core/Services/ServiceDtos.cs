@@ -31,16 +31,16 @@ namespace backend.Application.DTOs.Core.Services
         [StringLength(500)]
         public string? Description { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal DefaultPrice { get; init; }
 
         [Required]
         public PricingType PricingType { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? MinPrice { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? MaxPrice { get; init; }
 
         [StringLength(20)]
@@ -70,15 +70,15 @@ namespace backend.Application.DTOs.Core.Services
         [StringLength(500)]
         public string? Description { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? DefaultPrice { get; init; }
 
         public PricingType? PricingType { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? MinPrice { get; init; }
 
-        [Range(typeof(decimal), "0", "79228162514264337593543950335")]
+        // [Range(typeof(decimal), "0", "79228162514264337593543950335")]
         public decimal? MaxPrice { get; init; }
 
         [StringLength(20)]
