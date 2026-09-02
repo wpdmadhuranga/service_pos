@@ -285,7 +285,7 @@ namespace backend.Application.Pos
     public class PosUpdateInvoicePaymentRequest
     {
         public decimal AmountPaid { get; set; }
-        public PaymentStatus PaymentStatus { get; set; } 
+        public PaymentStatus PaymentStatus { get; set; }
     }
 
     public record PosCustomerDetailDto(
@@ -307,24 +307,32 @@ namespace backend.Application.Pos
         int OdometerReading,
         IReadOnlyList<PosInvoiceSummaryDto> Invoices);
 
-      public record PosInvoiceSummaryDto(
-        Guid Id,
-        string InvoiceNumber,
-        string Status,
-        decimal Total,
-        decimal AmountPaid,
-        string PaymentStatus,
-        string? Notes,
-        DateTime CreatedAt);
+    public record PosInvoiceSummaryDto(
+    Guid Id,
+    string InvoiceNumber,
+    string Status,
+    decimal Total,
+    decimal AmountPaid,
+    string PaymentStatus,
+    string? Notes,
+    DateTime CreatedAt,
+    IReadOnlyList<PosInvoiceItemsDto> Items);
 
-        public record PosVehicleCustomerDto(
+    public record PosInvoiceItemsDto(
         Guid Id,
-        string Name,
-        string Phone,
-        string? Email,
-        string? Address,
-        string? Notes);
- 
+        string ItemName,
+        int Quantity,
+        decimal UnitPrice,
+        decimal TotalPrice);
+
+    public record PosVehicleCustomerDto(
+    Guid Id,
+    string Name,
+    string Phone,
+    string? Email,
+    string? Address,
+    string? Notes);
+
     public record PosVehicleWithCustomerDto(
         Guid Id,
         string PlateNumber,

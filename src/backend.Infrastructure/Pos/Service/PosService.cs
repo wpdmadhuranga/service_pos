@@ -928,75 +928,89 @@ namespace backend.Infrastructure.Pos.Service
             return ToDetailDto(invoice);
         }
 
-        public async Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(
-           int page,
-           int pageSize,
-           CancellationToken cancellationToken = default)
-        {
-            page = page < 1 ? 1 : page;
-            pageSize = pageSize < 1 ? 10 : pageSize;
+       public async Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(
+    int page,
+    int pageSize,
+    CancellationToken cancellationToken = default)
+{
+    page = page < 1 ? 1 : page;
+    pageSize = pageSize < 1 ? 10 : pageSize;
 
-            var query = _db.Customers.AsNoTracking();
+    var query = _db.Customers.AsNoTracking();
 
-            var totalCount = await query.CountAsync(cancellationToken);
+    var totalCount = await query.CountAsync(cancellationToken);
 
-            var customers = await query
-                .Include(item => item.Vehicles)
-                    .ThenInclude(vehicle => vehicle.Invoices)
-                        .ThenInclude(invoice => invoice.Payments)
-                .OrderBy(item => item.Name)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(cancellationToken);
+    var customers = await query
+        .Include(item => item.Vehicles)
+            .ThenInclude(vehicle => vehicle.Invoices)
+                .ThenInclude(invoice => invoice.Payments)
+        .Include(item => item.Vehicles)
+            .ThenInclude(vehicle => vehicle.Invoices)
+                .ThenInclude(invoice => invoice.InvoiceItems) // Ensure invoice items are included
+        .OrderBy(item => item.Name)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync(cancellationToken);
 
-            var items = customers.Select(ToCustomerDetailDto).ToList();
+    var items = customers.Select(ToCustomerDetailDto).ToList();
 
-            return new PagedResultDto<PosCustomerDetailDto>(
-                items,
-                totalCount,
-                page,
-                pageSize,
-                (int)Math.Ceiling(totalCount / (double)pageSize));
-        }
+    return new PagedResultDto<PosCustomerDetailDto>(
+        items,
+        totalCount,
+        page,
+        pageSize,
+        (int)Math.Ceiling(totalCount / (double)pageSize));
+}
 
-         private static PosCustomerDetailDto ToCustomerDetailDto(Customer customer)
-        {
-            return new PosCustomerDetailDto(
-                customer.Id,
-                customer.Name,
-                customer.Phone,
-                customer.Email,
-                customer.Address,
-                customer.Notes,
-                customer.Vehicles
-                    .OrderBy(vehicle => vehicle.PlateNumber)
-                    .Select(vehicle => new PosVehicleWithInvoicesDto(
-                        vehicle.Id,
-                        vehicle.PlateNumber,
-                        vehicle.Make,
-                        vehicle.Model,
-                        vehicle.Year,
-                        vehicle.VehicleType,
-                        vehicle.OdometerReading,
-                        vehicle.Invoices
-                            .OrderByDescending(invoice => invoice.CreatedAt)
-                            .Select(invoice =>
-                            {
-                                var amountPaid = RoundMoney(invoice.Payments.Sum(payment => payment.Amount));
-                                return new PosInvoiceSummaryDto(
-                                    invoice.Id,
-                                    invoice.InvoiceNumber,
-                                    invoice.Status.ToString(),
-                                    invoice.Total,
-                                    amountPaid,
-                                    GetPaymentStatus(invoice.Total, amountPaid),
-                                    invoice.Notes,
-                                    invoice.CreatedAt);
-                            })
-                            .ToList()))
-                    .ToList());
-        }
+private static PosCustomerDetailDto ToCustomerDetailDto(Customer customer)
+{
+    return new PosCustomerDetailDto(
+        customer.Id,
+        customer.Name,
+        customer.Phone,
+        customer.Email,
+        customer.Address,
+        customer.Notes,
+        customer.Vehicles
+            .OrderBy(vehicle => vehicle.PlateNumber)
+            .Select(vehicle => new PosVehicleWithInvoicesDto(
+                vehicle.Id,
+                vehicle.PlateNumber,
+                vehicle.Make,
+                vehicle.Model,
+                vehicle.Year,
+                vehicle.VehicleType,
+                vehicle.OdometerReading,
+                vehicle.Invoices
+                    .OrderByDescending(invoice => invoice.CreatedAt)
+                    .Select(invoice =>
+                    {
+                        var amountPaid = RoundMoney(invoice.Payments.Sum(payment => payment.Amount));
 
+                        var itemDtos = invoice.InvoiceItems
+                            .Select(item => new PosInvoiceItemsDto(
+                                item.Id,
+                                item.NameSnapshot,   
+                                item.Quantity,
+                                item.PriceSnapshot,  
+                                item.LineTotal      
+                            ))
+                            .ToList();
+
+                        return new PosInvoiceSummaryDto(
+                            invoice.Id,
+                            invoice.InvoiceNumber,
+                            invoice.Status.ToString(),
+                            invoice.Total,
+                            amountPaid,
+                            GetPaymentStatus(invoice.Total, amountPaid),
+                            invoice.Notes,
+                            invoice.CreatedAt,
+                            itemDtos);
+                    })
+                    .ToList()))
+            .ToList());
+}
         public async Task<IReadOnlyList<PosVehicleWithCustomerDto>> GetAllVehiclesWithCustomerAsync(CancellationToken cancellationToken = default)
         {
             return await _db.Vehicles
