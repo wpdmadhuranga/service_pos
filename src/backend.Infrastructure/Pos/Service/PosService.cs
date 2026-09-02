@@ -6,6 +6,8 @@ using backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
+using backend.Domain.Entities.Audit;
 
 namespace backend.Infrastructure.Pos.Service
 {
@@ -140,7 +142,7 @@ namespace backend.Infrastructure.Pos.Service
                 VehicleId = vehicle.Id,
                 UserId = user.Id,
                 OdometerAtService = request.OdometerAtService,
-                Status = InvoiceStatus.Completed, 
+                Status = InvoiceStatus.Completed,
                 Discount = 0m,
                 Tax = 0m,
                 Notes = request.Notes,
@@ -309,12 +311,39 @@ namespace backend.Infrastructure.Pos.Service
                 throw new InvalidOperationException("Only draft or completed invoices can be cancelled.");
             }
 
+            var oldValues = JsonSerializer.Serialize(new
+            {
+                invoice.Status,
+                invoice.AmountPaid,
+                invoice.PaymentStatus
+            });
+
             invoice.Status = InvoiceStatus.Cancelled;
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            var newValues = JsonSerializer.Serialize(new
+            {
+                invoice.Status,
+                invoice.AmountPaid,
+                invoice.PaymentStatus
+            });
+
+            _db.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TableName = "Invoices",
+                RecordId = invoice.Id,
+                Action = "Cancel",
+                ChangedBy = null,
+                ChangedAt = DateTime.UtcNow,
+                OldValues = oldValues,
+                NewValues = newValues
+            });
+
             await _db.SaveChangesAsync(cancellationToken);
 
             return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
         }
-
         private async Task<(Customer Customer, Vehicle Vehicle)> ResolveCustomerAndVehicleAsync(PosCreateInvoiceRequest request, CancellationToken cancellationToken)
         {
             Customer? customer = null;
@@ -752,5 +781,244 @@ namespace backend.Infrastructure.Pos.Service
             };
         }
 
+
+        public async Task<PosDashboardInvoicesResponse> GetInvoiceOverviewAsync(
+            int weeklyPage,
+            int weeklyPageSize,
+            int monthlyPage,
+            int monthlyPageSize,
+                CancellationToken cancellationToken = default)
+        {
+            var utcNow = DateTime.UtcNow;
+            var todayStart = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
+            var todayEnd = todayStart.AddDays(1);
+
+            var todayInvoicesQuery = _db.Invoices
+                .AsNoTracking()
+                .Include(i => i.Customer)
+                .Include(i => i.Vehicle)
+                .Include(i => i.InvoiceItems)
+                .Include(i => i.Payments)
+                .Where(i => i.Status != InvoiceStatus.Cancelled && i.CreatedAt >= todayStart && i.CreatedAt < todayEnd)
+                .OrderByDescending(i => i.CreatedAt);
+
+            var todayInvoicesList = await todayInvoicesQuery.ToListAsync(cancellationToken);
+            var todayDtos = todayInvoicesList.Select(ToDetailDto).ToList();
+
+            var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
+            var weekEnd = weekStart.AddDays(7);
+
+            var weeklyQuery = _db.Invoices
+                .AsNoTracking()
+                .Where(i => i.Status != InvoiceStatus.Cancelled && i.CreatedAt >= weekStart && i.CreatedAt < weekEnd);
+
+            var weeklyTotalCount = await weeklyQuery.CountAsync(cancellationToken);
+            var weeklyItems = await weeklyQuery
+                .Include(i => i.Customer)
+                .Include(i => i.Vehicle)
+                .Include(i => i.InvoiceItems)
+                .Include(i => i.Payments)
+                .OrderByDescending(i => i.CreatedAt)
+                .Skip((weeklyPage - 1) * weeklyPageSize)
+                .Take(weeklyPageSize)
+                .ToListAsync(cancellationToken);
+
+            var weeklyResult = new PagedResultDto<PosInvoiceDetailDto>(
+                weeklyItems.Select(ToDetailDto).ToList(),
+                weeklyTotalCount,
+                weeklyPage,
+                weeklyPageSize,
+                (int)Math.Ceiling(weeklyTotalCount / (double)weeklyPageSize)
+            );
+
+            var monthStart = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthEnd = monthStart.AddMonths(1);
+
+            var monthlyQuery = _db.Invoices
+                .AsNoTracking()
+                .Where(i => i.Status != InvoiceStatus.Cancelled && i.CreatedAt >= monthStart && i.CreatedAt < monthEnd);
+
+            var monthlyTotalCount = await monthlyQuery.CountAsync(cancellationToken);
+            var monthlyItems = await monthlyQuery
+                .Include(i => i.Customer)
+                .Include(i => i.Vehicle)
+                .Include(i => i.InvoiceItems)
+                .Include(i => i.Payments)
+                .OrderByDescending(i => i.CreatedAt)
+                .Skip((monthlyPage - 1) * monthlyPageSize)
+                .Take(monthlyPageSize)
+                .ToListAsync(cancellationToken);
+
+            var monthlyResult = new PagedResultDto<PosInvoiceDetailDto>(
+                monthlyItems.Select(ToDetailDto).ToList(),
+                monthlyTotalCount,
+                monthlyPage,
+                monthlyPageSize,
+                (int)Math.Ceiling(monthlyTotalCount / (double)monthlyPageSize)
+            );
+
+            var duePaymentsList = await _db.Invoices
+                .AsNoTracking()
+                .Include(i => i.Customer)
+                .Include(i => i.Vehicle)
+                .Include(i => i.InvoiceItems)
+                .Include(i => i.Payments)
+                .Where(i => i.Status != InvoiceStatus.Cancelled && ((int)i.PaymentStatus == 0 || (int)i.PaymentStatus == 1))
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var dueDtos = duePaymentsList.Select(ToDetailDto).ToList();
+
+            return new PosDashboardInvoicesResponse(
+                todayDtos,
+                weeklyResult,
+                monthlyResult,
+                dueDtos
+            );
+        }
+
+        public async Task<PosInvoiceDetailDto> UpdateInvoicePaymentAsync(
+             Guid invoiceId,
+             PosUpdateInvoicePaymentRequest request,
+             CancellationToken cancellationToken = default)
+        {
+
+            var invoice = await _db.Invoices
+                .Include(i => i.Customer)
+                .Include(i => i.Vehicle)
+                .Include(i => i.InvoiceItems)
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == invoiceId, cancellationToken)
+                ?? throw new InvalidOperationException("Invoice was not found.");
+
+            if (invoice.Status == InvoiceStatus.Cancelled)
+            {
+                throw new InvalidOperationException("Cannot update payments on a cancelled invoice.");
+            }
+
+            var oldValues = JsonSerializer.Serialize(new
+            {
+                invoice.AmountPaid,
+                invoice.PaymentStatus
+            });
+
+            invoice.AmountPaid = request.AmountPaid;
+            invoice.PaymentStatus = request.PaymentStatus;
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            var newValues = JsonSerializer.Serialize(new
+            {
+                invoice.AmountPaid,
+                invoice.PaymentStatus
+            });
+
+            _db.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TableName = "Invoices",
+                RecordId = invoice.Id,
+                Action = "UpdatePayment",
+                ChangedBy = null,
+                ChangedAt = DateTime.UtcNow,
+                OldValues = oldValues,
+                NewValues = newValues
+            });
+
+            await _db.SaveChangesAsync(cancellationToken);
+            return ToDetailDto(invoice);
+        }
+
+        public async Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(
+           int page,
+           int pageSize,
+           CancellationToken cancellationToken = default)
+        {
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
+            var query = _db.Customers.AsNoTracking();
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var customers = await query
+                .Include(item => item.Vehicles)
+                    .ThenInclude(vehicle => vehicle.Invoices)
+                        .ThenInclude(invoice => invoice.Payments)
+                .OrderBy(item => item.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            var items = customers.Select(ToCustomerDetailDto).ToList();
+
+            return new PagedResultDto<PosCustomerDetailDto>(
+                items,
+                totalCount,
+                page,
+                pageSize,
+                (int)Math.Ceiling(totalCount / (double)pageSize));
+        }
+
+         private static PosCustomerDetailDto ToCustomerDetailDto(Customer customer)
+        {
+            return new PosCustomerDetailDto(
+                customer.Id,
+                customer.Name,
+                customer.Phone,
+                customer.Email,
+                customer.Address,
+                customer.Notes,
+                customer.Vehicles
+                    .OrderBy(vehicle => vehicle.PlateNumber)
+                    .Select(vehicle => new PosVehicleWithInvoicesDto(
+                        vehicle.Id,
+                        vehicle.PlateNumber,
+                        vehicle.Make,
+                        vehicle.Model,
+                        vehicle.Year,
+                        vehicle.VehicleType,
+                        vehicle.OdometerReading,
+                        vehicle.Invoices
+                            .OrderByDescending(invoice => invoice.CreatedAt)
+                            .Select(invoice =>
+                            {
+                                var amountPaid = RoundMoney(invoice.Payments.Sum(payment => payment.Amount));
+                                return new PosInvoiceSummaryDto(
+                                    invoice.Id,
+                                    invoice.InvoiceNumber,
+                                    invoice.Status.ToString(),
+                                    invoice.Total,
+                                    amountPaid,
+                                    GetPaymentStatus(invoice.Total, amountPaid),
+                                    invoice.Notes,
+                                    invoice.CreatedAt);
+                            })
+                            .ToList()))
+                    .ToList());
+        }
+
+        public async Task<IReadOnlyList<PosVehicleWithCustomerDto>> GetAllVehiclesWithCustomerAsync(CancellationToken cancellationToken = default)
+        {
+            return await _db.Vehicles
+                .AsNoTracking()
+                .Include(vehicle => vehicle.Customer)
+                .OrderBy(vehicle => vehicle.PlateNumber)
+                .Select(vehicle => new PosVehicleWithCustomerDto(
+                    vehicle.Id,
+                    vehicle.PlateNumber,
+                    vehicle.Make,
+                    vehicle.Model,
+                    vehicle.Year,
+                    vehicle.VehicleType,
+                    vehicle.OdometerReading,
+                    new PosVehicleCustomerDto(
+                        vehicle.Customer.Id,
+                        vehicle.Customer.Name,
+                        vehicle.Customer.Phone,
+                        vehicle.Customer.Email,
+                        vehicle.Customer.Address,
+                        vehicle.Customer.Notes)))
+                .ToListAsync(cancellationToken);
+        }
     }
 }

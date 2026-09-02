@@ -15,8 +15,8 @@ namespace backend.API.Controllers
             _serviceAdminService = serviceAdminService;
         }
 
-         // GET: api/services
         [HttpGet]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         [ProducesResponseType(typeof(List<ServiceGetDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<ServiceGetDto>>> GetAllServices()
         {

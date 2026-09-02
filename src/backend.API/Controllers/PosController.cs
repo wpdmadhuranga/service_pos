@@ -17,6 +17,7 @@ namespace backend.API.Controllers
         }
 
         [HttpGet("services")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<IReadOnlyList<PosServiceCategoryGroupDto>>> GetServices(CancellationToken cancellationToken)
         {
             var result = await _posService.GetActiveServicesAsync(cancellationToken);
@@ -24,6 +25,7 @@ namespace backend.API.Controllers
         }
 
         [HttpGet("customers/search")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<IReadOnlyList<PosCustomerSearchResultDto>>> SearchCustomers([FromQuery(Name = "q")] string q, CancellationToken cancellationToken)
         {
             var result = await _posService.SearchCustomersAsync(q ?? string.Empty, cancellationToken);
@@ -31,12 +33,14 @@ namespace backend.API.Controllers
         }
 
         [HttpGet("customers/{id:guid}/vehicles")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<IReadOnlyList<PosVehicleDto>>> GetCustomerVehicles(Guid id, CancellationToken cancellationToken)
         {
             return await HandleAsync(() => _posService.GetCustomerVehiclesAsync(id, cancellationToken));
         }
 
         [HttpPost("invoices")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosInvoiceDetailDto>> CreateInvoice([FromBody] PosCreateInvoiceRequest request, CancellationToken cancellationToken)
         {
             try
@@ -51,12 +55,14 @@ namespace backend.API.Controllers
         }
 
         [HttpPatch("invoices/{id:guid}")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosInvoiceDetailDto>> UpdateDraftInvoice(Guid id, [FromBody] PosUpdateDraftInvoiceRequest request, CancellationToken cancellationToken)
         {
             return await HandleAsync(() => _posService.UpdateDraftInvoiceAsync(id, request, cancellationToken));
         }
 
         [HttpPost("invoices/{id:guid}/complete")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosInvoiceDetailDto>> CompleteInvoice(Guid id, CancellationToken cancellationToken)
         {
             var userId = GetCurrentUserId();
@@ -64,12 +70,14 @@ namespace backend.API.Controllers
         }
 
         [HttpPost("invoices/{id:guid}/payments")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosInvoiceDetailDto>> RecordPayment(Guid id, [FromBody] PosRecordPaymentRequest request, CancellationToken cancellationToken)
         {
             return await HandleAsync(() => _posService.RecordPaymentAsync(id, request, cancellationToken));
         }
 
         [HttpPost("invoices/{id:guid}/cancel")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosInvoiceDetailDto>> CancelInvoice(Guid id, CancellationToken cancellationToken)
         {
             return await HandleAsync(() => _posService.CancelInvoiceAsync(id, cancellationToken));
@@ -115,6 +123,46 @@ namespace backend.API.Controllers
             }
 
             return userId;
+        }
+
+        [HttpGet("invoices/overview")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<PosDashboardInvoicesResponse>> GetInvoiceOverview(
+            [FromQuery] int weeklyPage = 1,
+            [FromQuery] int weeklyPageSize = 10,
+            [FromQuery] int monthlyPage = 1,
+            [FromQuery] int monthlyPageSize = 10,
+            CancellationToken cancellationToken = default)
+        {
+            return await HandleAsync(() => _posService.GetInvoiceOverviewAsync(
+            weeklyPage, weeklyPageSize, monthlyPage, monthlyPageSize, cancellationToken));
+        }
+
+        [HttpPut("invoices/{id:guid}/payment")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<PosInvoiceDetailDto>> UpdateInvoicePayment(
+            Guid id,
+            [FromBody] PosUpdateInvoicePaymentRequest request,
+            CancellationToken cancellationToken)
+        {
+            return await HandleAsync(() => _posService.UpdateInvoicePaymentAsync(id, request, cancellationToken));
+        }
+
+        [HttpGet("vehicles")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<IReadOnlyList<PosVehicleWithCustomerDto>>> GetAllVehicles(CancellationToken cancellationToken)
+        {
+            return await HandleAsync(() => _posService.GetAllVehiclesWithCustomerAsync(cancellationToken));
+        }
+
+        [HttpGet("customers")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<PagedResultDto<PosCustomerDetailDto>>> GetAllCustomers(
+           [FromQuery] int page = 1,
+           [FromQuery] int pageSize = 10,
+           CancellationToken cancellationToken = default)
+        {
+            return await HandleAsync(() => _posService.GetAllCustomersDetailAsync(page, pageSize, cancellationToken));
         }
     }
 }

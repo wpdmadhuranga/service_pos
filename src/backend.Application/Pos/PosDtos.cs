@@ -267,5 +267,73 @@ namespace backend.Application.Pos
         IReadOnlyList<PosInvoiceItemDto> Items,
         IReadOnlyList<PosPaymentDto> Payments);
 
+    public record PosDashboardInvoicesResponse(
+        IReadOnlyList<PosInvoiceDetailDto> TodayInvoices,
+        PagedResultDto<PosInvoiceDetailDto> WeeklyInvoices,
+        PagedResultDto<PosInvoiceDetailDto> MonthlyInvoices,
+        IReadOnlyList<PosInvoiceDetailDto> AllTimeDuePayments
+);
+
+    public record PagedResultDto<T>(
+        IReadOnlyList<T> Items,
+        int TotalCount,
+        int Page,
+        int PageSize,
+        int TotalPages
+    );
+
+    public class PosUpdateInvoicePaymentRequest
+    {
+        public decimal AmountPaid { get; set; }
+        public PaymentStatus PaymentStatus { get; set; } 
+    }
+
+    public record PosCustomerDetailDto(
+          Guid Id,
+          string Name,
+          string Phone,
+          string? Email,
+          string? Address,
+          string? Notes,
+          IReadOnlyList<PosVehicleWithInvoicesDto> Vehicles);
+
+    public record PosVehicleWithInvoicesDto(
+        Guid Id,
+        string PlateNumber,
+        string? Make,
+        string? Model,
+        int? Year,
+        string? VehicleType,
+        int OdometerReading,
+        IReadOnlyList<PosInvoiceSummaryDto> Invoices);
+
+      public record PosInvoiceSummaryDto(
+        Guid Id,
+        string InvoiceNumber,
+        string Status,
+        decimal Total,
+        decimal AmountPaid,
+        string PaymentStatus,
+        string? Notes,
+        DateTime CreatedAt);
+
+        public record PosVehicleCustomerDto(
+        Guid Id,
+        string Name,
+        string Phone,
+        string? Email,
+        string? Address,
+        string? Notes);
+ 
+    public record PosVehicleWithCustomerDto(
+        Guid Id,
+        string PlateNumber,
+        string? Make,
+        string? Model,
+        int? Year,
+        string? VehicleType,
+        int OdometerReading,
+        PosVehicleCustomerDto Customer);
+
 
 }
