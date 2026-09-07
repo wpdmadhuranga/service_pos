@@ -3,7 +3,8 @@ using backend.Application.Common.Interfaces;
 using backend.Domain.Entities;
 using backend.Domain.Entities.History;
 using backend.Domain.Entities.Audit;
-
+using InventoryItem = backend.Domain.Entities.Inventory.InventoryItem;
+using InvoiceItemInventoryUsage = backend.Domain.Entities.Inventory.InvoiceItemInventoryUsage;
 
 namespace backend.Persistence.Context
 {
@@ -15,7 +16,6 @@ namespace backend.Persistence.Context
         {
         }
 
-        // schema: service_center
         public DbSet<Customer> Customers => Set<Customer>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
@@ -24,13 +24,11 @@ namespace backend.Persistence.Context
         public DbSet<Invoice> Invoices => Set<Invoice>();
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<InvoiceItemInventoryUsage> InvoiceItemInventoryUsages => Set<InvoiceItemInventoryUsage>();
         public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
         public DbSet<User> Users => Set<User>();
-
-        // schema: audit
+        public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>(); 
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
-
-        // schema: history
         public DbSet<ServiceHistory> ServiceHistory => Set<ServiceHistory>();
         public DbSet<CustomerServiceSummary> CustomerServiceSummaries => Set<CustomerServiceSummary>();
 
@@ -44,15 +42,17 @@ namespace backend.Persistence.Context
         IQueryable<InvoiceItem> IApplicationDbContext.InvoiceItems => InvoiceItems;
         IQueryable<Payment> IApplicationDbContext.Payments => Payments;
         IQueryable<InventoryTransaction> IApplicationDbContext.InventoryTransactions => InventoryTransactions;
+        IQueryable<InventoryItem> IApplicationDbContext.InventoryItems => InventoryItems;  
+        IQueryable<InvoiceItemInventoryUsage> IApplicationDbContext.InvoiceItemInventoryUsages => InvoiceItemInventoryUsages;
 
         void IApplicationDbContext.Add<TEntity>(TEntity entity)
         {
-            Set<TEntity>().Add(entity);
+            base.Add(entity); // Uses EF Core base DbContext Add directly[cite: 1]
         }
 
         void IApplicationDbContext.Remove<TEntity>(TEntity entity)
         {
-            Set<TEntity>().Remove(entity);
+            base.Remove(entity); // Uses EF Core base DbContext Remove directly[cite: 1]
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

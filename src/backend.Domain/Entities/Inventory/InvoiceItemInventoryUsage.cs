@@ -7,9 +7,8 @@ namespace backend.Domain.Entities.Inventory
         public Guid Id { get; set; }
         public Guid InvoiceItemId { get; set; }
         public Guid InventoryItemId { get; set; }
-        public decimal QuantityUsed { get; set; } // may differ from the default recipe
+        public decimal QuantityUsed { get; set; } 
 
-        // Navigation
         public InvoiceItem InvoiceItem { get; set; } = null!;
         public InventoryItem InventoryItem { get; set; } = null!;
     }

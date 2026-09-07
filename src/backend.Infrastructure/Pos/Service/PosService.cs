@@ -129,9 +129,7 @@ namespace backend.Infrastructure.Pos.Service
                 ?? throw new InvalidOperationException("User was not found.");
 
             var (customer, vehicle) = await ResolveCustomerAndVehicleAsync(request, cancellationToken);
-
             var invoiceItems = await BuildInvoiceItemsAsync(request.Items, cancellationToken);
-
             var invoiceNumber = await GenerateInvoiceNumberAsync(cancellationToken);
 
             var invoice = new Invoice
@@ -151,8 +149,43 @@ namespace backend.Infrastructure.Pos.Service
             };
 
             ApplyTotals(invoice);
-
             ValidateSoftStock(invoice.InvoiceItems);
+
+            foreach (var invoiceItem in invoice.InvoiceItems)
+            {
+                if (invoiceItem.ProductId.HasValue)
+                {
+                    var product = await _db.Products
+                        .Include(p => p.InventoryItem)
+                        .FirstOrDefaultAsync(p => p.Id == invoiceItem.ProductId.Value, cancellationToken);
+
+                    if (product != null)
+                    {
+                        product.StockQuantity -= invoiceItem.Quantity;
+                        product.UpdatedAt = DateTime.UtcNow;
+
+                        if (product.InventoryItemId.HasValue)
+                        {
+                            var inventoryItem = await _db.InventoryItems
+                                .FirstOrDefaultAsync(i => i.Id == product.InventoryItemId.Value, cancellationToken);
+
+                            if (inventoryItem != null)
+                            {
+                                inventoryItem.QuantityOnHand -= invoiceItem.Quantity;
+                                inventoryItem.UpdatedAt = DateTime.UtcNow;
+
+                                _db.Add(new backend.Domain.Entities.Inventory.InvoiceItemInventoryUsage
+                                {
+                                    Id = Guid.NewGuid(),
+                                    InvoiceItemId = invoiceItem.Id,
+                                    InventoryItemId = inventoryItem.Id,
+                                    QuantityUsed = invoiceItem.Quantity
+                                });
+                            }
+                        }
+                    }
+                }
+            }
 
             if (request.InitialPayment is not null)
             {
@@ -162,13 +195,7 @@ namespace backend.Infrastructure.Pos.Service
                 }
 
                 invoice.AmountPaid = request.InitialPayment.Amount;
-
-                invoice.PaymentStatus =
-                    invoice.AmountPaid >= invoice.Total
-                        ? PaymentStatus.Paid
-                        : invoice.AmountPaid > 0
-                            ? PaymentStatus.PartiallyPaid
-                            : PaymentStatus.Unpaid;
+                invoice.PaymentStatus = invoice.AmountPaid >= invoice.Total ? PaymentStatus.Paid : PaymentStatus.PartiallyPaid;
 
                 invoice.Payments.Add(new Payment
                 {
@@ -186,7 +213,6 @@ namespace backend.Infrastructure.Pos.Service
             }
 
             _db.Add(invoice);
-
             await _db.SaveChangesAsync(cancellationToken);
 
             return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
@@ -311,22 +337,43 @@ namespace backend.Infrastructure.Pos.Service
                 throw new InvalidOperationException("Only draft or completed invoices can be cancelled.");
             }
 
-            var oldValues = JsonSerializer.Serialize(new
+            if (invoice.Status == InvoiceStatus.Cancelled)
             {
-                invoice.Status,
-                invoice.AmountPaid,
-                invoice.PaymentStatus
-            });
+                throw new InvalidOperationException("This invoice is already cancelled.");
+            }
+
+            var invoiceItemIds = invoice.InvoiceItems.Select(ii => ii.Id).ToList();
+
+            var usages = await _db.InvoiceItemInventoryUsages
+                .Where(u => invoiceItemIds.Contains(u.InvoiceItemId))
+                .ToListAsync(cancellationToken);
+            foreach (var usage in usages)
+            {
+                var inventoryItem = await _db.InventoryItems
+                    .FirstOrDefaultAsync(i => i.Id == usage.InventoryItemId, cancellationToken);
+
+                if (inventoryItem != null)
+                {
+                    inventoryItem.QuantityOnHand += usage.QuantityUsed;
+                    inventoryItem.UpdatedAt = DateTime.UtcNow;
+
+                    var product = await _db.Products
+                        .FirstOrDefaultAsync(p => p.InventoryItemId == inventoryItem.Id, cancellationToken);
+
+                    if (product != null)
+                    {
+                        product.StockQuantity += (int)usage.QuantityUsed;
+                        product.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+            }
+
+            var oldValues = JsonSerializer.Serialize(new { invoice.Status, invoice.AmountPaid, invoice.PaymentStatus });
 
             invoice.Status = InvoiceStatus.Cancelled;
             invoice.UpdatedAt = DateTime.UtcNow;
 
-            var newValues = JsonSerializer.Serialize(new
-            {
-                invoice.Status,
-                invoice.AmountPaid,
-                invoice.PaymentStatus
-            });
+            var newValues = JsonSerializer.Serialize(new { invoice.Status, invoice.AmountPaid, invoice.PaymentStatus });
 
             _db.Add(new AuditLog
             {
@@ -334,7 +381,6 @@ namespace backend.Infrastructure.Pos.Service
                 TableName = "Invoices",
                 RecordId = invoice.Id,
                 Action = "Cancel",
-                ChangedBy = null,
                 ChangedAt = DateTime.UtcNow,
                 OldValues = oldValues,
                 NewValues = newValues
@@ -928,89 +974,89 @@ namespace backend.Infrastructure.Pos.Service
             return ToDetailDto(invoice);
         }
 
-       public async Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(
-    int page,
-    int pageSize,
-    CancellationToken cancellationToken = default)
-{
-    page = page < 1 ? 1 : page;
-    pageSize = pageSize < 1 ? 10 : pageSize;
+        public async Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(
+     int page,
+     int pageSize,
+     CancellationToken cancellationToken = default)
+        {
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
 
-    var query = _db.Customers.AsNoTracking();
+            var query = _db.Customers.AsNoTracking();
 
-    var totalCount = await query.CountAsync(cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken);
 
-    var customers = await query
-        .Include(item => item.Vehicles)
-            .ThenInclude(vehicle => vehicle.Invoices)
-                .ThenInclude(invoice => invoice.Payments)
-        .Include(item => item.Vehicles)
-            .ThenInclude(vehicle => vehicle.Invoices)
-                .ThenInclude(invoice => invoice.InvoiceItems) // Ensure invoice items are included
-        .OrderBy(item => item.Name)
-        .Skip((page - 1) * pageSize)
-        .Take(pageSize)
-        .ToListAsync(cancellationToken);
+            var customers = await query
+                .Include(item => item.Vehicles)
+                    .ThenInclude(vehicle => vehicle.Invoices)
+                        .ThenInclude(invoice => invoice.Payments)
+                .Include(item => item.Vehicles)
+                    .ThenInclude(vehicle => vehicle.Invoices)
+                        .ThenInclude(invoice => invoice.InvoiceItems)
+                .OrderBy(item => item.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
 
-    var items = customers.Select(ToCustomerDetailDto).ToList();
+            var items = customers.Select(ToCustomerDetailDto).ToList();
 
-    return new PagedResultDto<PosCustomerDetailDto>(
-        items,
-        totalCount,
-        page,
-        pageSize,
-        (int)Math.Ceiling(totalCount / (double)pageSize));
-}
+            return new PagedResultDto<PosCustomerDetailDto>(
+                items,
+                totalCount,
+                page,
+                pageSize,
+                (int)Math.Ceiling(totalCount / (double)pageSize));
+        }
 
-private static PosCustomerDetailDto ToCustomerDetailDto(Customer customer)
-{
-    return new PosCustomerDetailDto(
-        customer.Id,
-        customer.Name,
-        customer.Phone,
-        customer.Email,
-        customer.Address,
-        customer.Notes,
-        customer.Vehicles
-            .OrderBy(vehicle => vehicle.PlateNumber)
-            .Select(vehicle => new PosVehicleWithInvoicesDto(
-                vehicle.Id,
-                vehicle.PlateNumber,
-                vehicle.Make,
-                vehicle.Model,
-                vehicle.Year,
-                vehicle.VehicleType,
-                vehicle.OdometerReading,
-                vehicle.Invoices
-                    .OrderByDescending(invoice => invoice.CreatedAt)
-                    .Select(invoice =>
-                    {
-                        var amountPaid = RoundMoney(invoice.Payments.Sum(payment => payment.Amount));
+        private static PosCustomerDetailDto ToCustomerDetailDto(Customer customer)
+        {
+            return new PosCustomerDetailDto(
+                customer.Id,
+                customer.Name,
+                customer.Phone,
+                customer.Email,
+                customer.Address,
+                customer.Notes,
+                customer.Vehicles
+                    .OrderBy(vehicle => vehicle.PlateNumber)
+                    .Select(vehicle => new PosVehicleWithInvoicesDto(
+                        vehicle.Id,
+                        vehicle.PlateNumber,
+                        vehicle.Make,
+                        vehicle.Model,
+                        vehicle.Year,
+                        vehicle.VehicleType,
+                        vehicle.OdometerReading,
+                        vehicle.Invoices
+                            .OrderByDescending(invoice => invoice.CreatedAt)
+                            .Select(invoice =>
+                            {
+                                var amountPaid = RoundMoney(invoice.Payments.Sum(payment => payment.Amount));
 
-                        var itemDtos = invoice.InvoiceItems
-                            .Select(item => new PosInvoiceItemsDto(
-                                item.Id,
-                                item.NameSnapshot,   
-                                item.Quantity,
-                                item.PriceSnapshot,  
-                                item.LineTotal      
-                            ))
-                            .ToList();
+                                var itemDtos = invoice.InvoiceItems
+                                    .Select(item => new PosInvoiceItemsDto(
+                                        item.Id,
+                                        item.NameSnapshot,
+                                        item.Quantity,
+                                        item.PriceSnapshot,
+                                        item.LineTotal
+                                    ))
+                                    .ToList();
 
-                        return new PosInvoiceSummaryDto(
-                            invoice.Id,
-                            invoice.InvoiceNumber,
-                            invoice.Status.ToString(),
-                            invoice.Total,
-                            amountPaid,
-                            GetPaymentStatus(invoice.Total, amountPaid),
-                            invoice.Notes,
-                            invoice.CreatedAt,
-                            itemDtos);
-                    })
-                    .ToList()))
-            .ToList());
-}
+                                return new PosInvoiceSummaryDto(
+                                    invoice.Id,
+                                    invoice.InvoiceNumber,
+                                    invoice.Status.ToString(),
+                                    invoice.Total,
+                                    amountPaid,
+                                    GetPaymentStatus(invoice.Total, amountPaid),
+                                    invoice.Notes,
+                                    invoice.CreatedAt,
+                                    itemDtos);
+                            })
+                            .ToList()))
+                    .ToList());
+        }
         public async Task<IReadOnlyList<PosVehicleWithCustomerDto>> GetAllVehiclesWithCustomerAsync(CancellationToken cancellationToken = default)
         {
             return await _db.Vehicles

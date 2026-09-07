@@ -5,6 +5,7 @@ namespace backend.Domain.Enums
         StockIn,
         StockOut,
         Adjustment,
-        Return
+        Return,
+        Sale
     }
 }

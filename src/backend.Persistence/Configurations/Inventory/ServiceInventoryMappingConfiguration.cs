@@ -13,11 +13,8 @@ namespace backend.Persistence.Configurations.Inventory
 
             builder.Property(m => m.DefaultQuantity).HasColumnType("decimal(10,2)");
 
-            // One service shouldn't map to the same inventory item twice.
             builder.HasIndex(m => new { m.ServiceId, m.InventoryItemId }).IsUnique();
 
-            // Cross-schema link to service_center.Services - no inverse
-            // navigation added there, so Service.cs stays untouched.
             builder.HasOne(m => m.Service)
                 .WithMany()
                 .HasForeignKey(m => m.ServiceId)

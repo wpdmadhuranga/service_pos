@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace backend.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class FirstMigration : Migration
+    public partial class newDbSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -59,27 +59,6 @@ namespace backend.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CustomerServiceSummary", x => x.CustomerId);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "InventoryItems",
-                schema: "inventory",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    Sku = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: true),
-                    Unit = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    QuantityOnHand = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    ReorderLevel = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    UnitCost = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_InventoryItems", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -181,6 +160,9 @@ namespace backend.Persistence.Migrations
                     Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     DefaultPrice = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    PricingType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "Fixed"),
+                    MinPrice = table.Column<decimal>(type: "numeric(10,2)", nullable: true),
+                    MaxPrice = table.Column<decimal>(type: "numeric(10,2)", nullable: true),
                     Unit = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     SortOrder = table.Column<int>(type: "integer", nullable: false),
@@ -243,6 +225,8 @@ namespace backend.Persistence.Migrations
                     Tax = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     Total = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     Notes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    AmountPaid = table.Column<decimal>(type: "numeric", nullable: false),
+                    PaymentStatus = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -270,6 +254,117 @@ namespace backend.Persistence.Migrations
                         principalTable: "Vehicles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Payments",
+                schema: "service_center",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    InvoiceId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    Method = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ReferenceNo = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Payments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Payments_Invoices_InvoiceId",
+                        column: x => x.InvoiceId,
+                        principalSchema: "service_center",
+                        principalTable: "Invoices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "InventoryItems",
+                schema: "inventory",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Sku = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: true),
+                    Unit = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    QuantityOnHand = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    ReorderLevel = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    UnitCost = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ProductId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InventoryItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "InventoryItemTransactions",
+                schema: "inventory",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    InventoryItemId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Quantity = table.Column<decimal>(type: "numeric(18,4)", nullable: false),
+                    ReferenceInvoiceItemId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Note = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InventoryItemTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_InventoryItemTransactions_InventoryItems_InventoryItemId",
+                        column: x => x.InventoryItemId,
+                        principalSchema: "inventory",
+                        principalTable: "InventoryItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Products",
+                schema: "inventory",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ServiceId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Brand = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    PartNumber = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: true),
+                    CompatibleVehicleType = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: true),
+                    CostPrice = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    SellingPrice = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    StockQuantity = table.Column<int>(type: "integer", nullable: false),
+                    Unit = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    InventoryItemId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Products", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Products_InventoryItems_InventoryItemId",
+                        column: x => x.InventoryItemId,
+                        principalSchema: "inventory",
+                        principalTable: "InventoryItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Products_Services_ServiceId",
+                        column: x => x.ServiceId,
+                        principalSchema: "service_center",
+                        principalTable: "Services",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -302,6 +397,45 @@ namespace backend.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "InventoryTransactions",
+                schema: "service_center",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ProductId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    Quantity = table.Column<int>(type: "integer", nullable: false),
+                    Notes = table.Column<string>(type: "text", nullable: true),
+                    InvoiceId = table.Column<Guid>(type: "uuid", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InventoryTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_InventoryTransactions_Invoices_InvoiceId",
+                        column: x => x.InvoiceId,
+                        principalSchema: "service_center",
+                        principalTable: "Invoices",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_InventoryTransactions_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalSchema: "inventory",
+                        principalTable: "Products",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_InventoryTransactions_Users_UserId",
+                        column: x => x.UserId,
+                        principalSchema: "service_center",
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "InvoiceItems",
                 schema: "service_center",
                 columns: table => new
@@ -309,6 +443,8 @@ namespace backend.Persistence.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     InvoiceId = table.Column<Guid>(type: "uuid", nullable: false),
                     ServiceId = table.Column<Guid>(type: "uuid", nullable: true),
+                    ProductId = table.Column<Guid>(type: "uuid", nullable: true),
+                    BrandSnapshot = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     NameSnapshot = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     PriceSnapshot = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     Quantity = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
@@ -325,76 +461,19 @@ namespace backend.Persistence.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
+                        name: "FK_InvoiceItems_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalSchema: "inventory",
+                        principalTable: "Products",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
                         name: "FK_InvoiceItems_Services_ServiceId",
                         column: x => x.ServiceId,
                         principalSchema: "service_center",
                         principalTable: "Services",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Payments",
-                schema: "service_center",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    InvoiceId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Amount = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    Method = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    PaidAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ReferenceNo = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Payments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Payments_Invoices_InvoiceId",
-                        column: x => x.InvoiceId,
-                        principalSchema: "service_center",
-                        principalTable: "Invoices",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "InventoryTransactions",
-                schema: "inventory",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    InventoryItemId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    Quantity = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    ReferenceInvoiceItemId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Note = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_InventoryTransactions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_InventoryTransactions_InventoryItems_InventoryItemId",
-                        column: x => x.InventoryItemId,
-                        principalSchema: "inventory",
-                        principalTable: "InventoryItems",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_InventoryTransactions_InvoiceItems_ReferenceInvoiceItemId",
-                        column: x => x.ReferenceInvoiceItemId,
-                        principalSchema: "service_center",
-                        principalTable: "InvoiceItems",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_InventoryTransactions_Users_CreatedBy",
-                        column: x => x.CreatedBy,
-                        principalSchema: "service_center",
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -469,6 +548,12 @@ namespace backend.Persistence.Migrations
                 column: "IsActive");
 
             migrationBuilder.CreateIndex(
+                name: "IX_InventoryItems_ProductId",
+                schema: "inventory",
+                table: "InventoryItems",
+                column: "ProductId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_InventoryItems_Sku",
                 schema: "inventory",
                 table: "InventoryItems",
@@ -477,28 +562,46 @@ namespace backend.Persistence.Migrations
                 filter: "\"Sku\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_InventoryTransactions_CreatedAt",
+                name: "IX_InventoryItemTransactions_CreatedAt",
                 schema: "inventory",
-                table: "InventoryTransactions",
+                table: "InventoryItemTransactions",
                 column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
-                name: "IX_InventoryTransactions_CreatedBy",
+                name: "IX_InventoryItemTransactions_CreatedBy",
                 schema: "inventory",
-                table: "InventoryTransactions",
+                table: "InventoryItemTransactions",
                 column: "CreatedBy");
 
             migrationBuilder.CreateIndex(
-                name: "IX_InventoryTransactions_InventoryItemId",
+                name: "IX_InventoryItemTransactions_InventoryItemId",
                 schema: "inventory",
-                table: "InventoryTransactions",
+                table: "InventoryItemTransactions",
                 column: "InventoryItemId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_InventoryTransactions_ReferenceInvoiceItemId",
+                name: "IX_InventoryItemTransactions_ReferenceInvoiceItemId",
                 schema: "inventory",
-                table: "InventoryTransactions",
+                table: "InventoryItemTransactions",
                 column: "ReferenceInvoiceItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InventoryTransactions_InvoiceId",
+                schema: "service_center",
+                table: "InventoryTransactions",
+                column: "InvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InventoryTransactions_ProductId",
+                schema: "service_center",
+                table: "InventoryTransactions",
+                column: "ProductId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InventoryTransactions_UserId",
+                schema: "service_center",
+                table: "InventoryTransactions",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_InvoiceItemInventoryUsages_InventoryItemId",
@@ -517,6 +620,12 @@ namespace backend.Persistence.Migrations
                 schema: "service_center",
                 table: "InvoiceItems",
                 column: "InvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvoiceItems_ProductId",
+                schema: "service_center",
+                table: "InvoiceItems",
+                column: "ProductId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_InvoiceItems_ServiceId",
@@ -560,6 +669,31 @@ namespace backend.Persistence.Migrations
                 schema: "service_center",
                 table: "Payments",
                 column: "InvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_InventoryItemId",
+                schema: "inventory",
+                table: "Products",
+                column: "InventoryItemId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_IsActive",
+                schema: "inventory",
+                table: "Products",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_ServiceId",
+                schema: "inventory",
+                table: "Products",
+                column: "ServiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_ServiceId_Brand_Name",
+                schema: "inventory",
+                table: "Products",
+                columns: new[] { "ServiceId", "Brand", "Name" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ServiceCategories_Name",
@@ -637,11 +771,25 @@ namespace backend.Persistence.Migrations
                 column: "PlateNumber",
                 unique: true,
                 filter: "\"DeletedAt\" IS NULL");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_InventoryItems_Products_ProductId",
+                schema: "inventory",
+                table: "InventoryItems",
+                column: "ProductId",
+                principalSchema: "inventory",
+                principalTable: "Products",
+                principalColumn: "Id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_InventoryItems_Products_ProductId",
+                schema: "inventory",
+                table: "InventoryItems");
+
             migrationBuilder.DropTable(
                 name: "AuditLogs",
                 schema: "audit");
@@ -651,8 +799,12 @@ namespace backend.Persistence.Migrations
                 schema: "history");
 
             migrationBuilder.DropTable(
-                name: "InventoryTransactions",
+                name: "InventoryItemTransactions",
                 schema: "inventory");
+
+            migrationBuilder.DropTable(
+                name: "InventoryTransactions",
+                schema: "service_center");
 
             migrationBuilder.DropTable(
                 name: "InvoiceItemInventoryUsages",
@@ -675,15 +827,7 @@ namespace backend.Persistence.Migrations
                 schema: "service_center");
 
             migrationBuilder.DropTable(
-                name: "InventoryItems",
-                schema: "inventory");
-
-            migrationBuilder.DropTable(
                 name: "Invoices",
-                schema: "service_center");
-
-            migrationBuilder.DropTable(
-                name: "Services",
                 schema: "service_center");
 
             migrationBuilder.DropTable(
@@ -695,11 +839,23 @@ namespace backend.Persistence.Migrations
                 schema: "service_center");
 
             migrationBuilder.DropTable(
-                name: "ServiceCategories",
+                name: "Customers",
                 schema: "service_center");
 
             migrationBuilder.DropTable(
-                name: "Customers",
+                name: "Products",
+                schema: "inventory");
+
+            migrationBuilder.DropTable(
+                name: "InventoryItems",
+                schema: "inventory");
+
+            migrationBuilder.DropTable(
+                name: "Services",
+                schema: "service_center");
+
+            migrationBuilder.DropTable(
+                name: "ServiceCategories",
                 schema: "service_center");
         }
     }

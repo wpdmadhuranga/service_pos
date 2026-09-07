@@ -22,6 +22,7 @@ namespace backend.Persistence.Configurations.Inventory
             builder.HasIndex(p => p.ServiceId);
             builder.HasIndex(p => p.IsActive);
             builder.HasIndex(p => new { p.ServiceId, p.Brand, p.Name });
+            builder.HasIndex(p => p.InventoryItemId).IsUnique();
 
             builder.HasOne(p => p.Service)
                 .WithMany()
@@ -36,6 +37,11 @@ namespace backend.Persistence.Configurations.Inventory
             builder.HasMany(p => p.InvoiceItems)
                 .WithOne(ii => ii.Product)
                 .HasForeignKey(ii => ii.ProductId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.HasOne(p => p.InventoryItem)
+                .WithOne()
+                .HasForeignKey<Product>(p => p.InventoryItemId)
                 .OnDelete(DeleteBehavior.SetNull);
         }
     }

@@ -14,9 +14,7 @@ namespace ServiceCenterApi.Data.Configurations.Inventory
             builder.Property(u => u.QuantityUsed).HasColumnType("decimal(10,2)");
 
             builder.HasIndex(u => u.InvoiceItemId);
-
-            // Cross-schema link to service_center.InvoiceItems - no inverse
-            // navigation added there, so InvoiceItem.cs stays untouched.
+            
             builder.HasOne(u => u.InvoiceItem)
                 .WithMany()
                 .HasForeignKey(u => u.InvoiceItemId)

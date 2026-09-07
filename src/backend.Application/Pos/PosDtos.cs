@@ -344,4 +344,34 @@ namespace backend.Application.Pos
         PosVehicleCustomerDto Customer);
 
 
+    public class CreateInventoryItemDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Sku { get; set; }
+        public string Unit { get; set; } = string.Empty;
+        public decimal QuantityOnHand { get; set; }
+        public decimal ReorderLevel { get; set; }
+        public decimal UnitCost { get; set; }
+    }
+
+    public class StockAdjustmentDto
+    {
+        public decimal Quantity { get; set; }
+        public string? Note { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class InventoryItemResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Sku { get; set; }
+        public string Unit { get; set; } = string.Empty;
+        public decimal QuantityOnHand { get; set; }
+        public decimal ReorderLevel { get; set; }
+        public decimal UnitCost { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+
 }

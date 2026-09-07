@@ -1,3 +1,5 @@
+using backend.Domain.Entities.Inventory;
+
 namespace backend.Domain.Entities
 {
     public class Product
@@ -15,8 +17,10 @@ namespace backend.Domain.Entities
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
-
+        public Guid? InventoryItemId { get; set; }
+        public InventoryItem? InventoryItem { get; set; }
         public Service? Service { get; set; }
+        public ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();
         public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
         public ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();
     }
