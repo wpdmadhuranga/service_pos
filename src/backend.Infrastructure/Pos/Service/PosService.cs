@@ -121,8 +121,8 @@ namespace backend.Infrastructure.Pos.Service
         }
 
         public async Task<PosInvoiceDetailDto> CreateDraftInvoiceAsync(
-    PosCreateInvoiceRequest request,
-    CancellationToken cancellationToken = default)
+            PosCreateInvoiceRequest request,
+            CancellationToken cancellationToken = default)
         {
             var user = await _db.Users
                 .FirstOrDefaultAsync(item => item.Id == request.UserId, cancellationToken)
@@ -523,7 +523,19 @@ namespace backend.Infrastructure.Pos.Service
                     nameSnapshot = product.Name;
                     brandSnapshot = product.Brand;
 
-                    priceSnapshot = product.SellingPrice;
+                    if (requestItem.Price.HasValue)
+                    {
+                        priceSnapshot = requestItem.Price.Value;
+
+                        if (priceSnapshot < 0m)
+                        {
+                            throw new InvalidOperationException($"Price cannot be negative for product '{product.Brand} {product.Name}'.");
+                        }
+                    }
+                    else
+                    {
+                        priceSnapshot = product.SellingPrice;
+                    }
                 }
                 else if (serviceId.HasValue)
                 {
@@ -586,42 +598,6 @@ namespace backend.Infrastructure.Pos.Service
             }
 
             return items;
-        }
-
-        private void ValidateSoftStock(IEnumerable<InvoiceItem> items)
-        {
-            var productRequests = items
-                .Where(item => item.ProductId.HasValue)
-                .GroupBy(item => item.ProductId!.Value)
-                .Select(group => new { ProductId = group.Key, Quantity = group.Sum(item => item.Quantity) })
-                .ToList();
-
-            if (productRequests.Count == 0)
-            {
-                return;
-            }
-
-            var productIds = productRequests.Select(item => item.ProductId).ToList();
-            var products = _db.Products
-                .Where(product => productIds.Contains(product.Id))
-                .ToList();
-
-            var issues = new List<string>();
-            foreach (var request in productRequests)
-            {
-                var product = products.FirstOrDefault(item => item.Id == request.ProductId);
-                if (product is null || product.StockQuantity < request.Quantity)
-                {
-                    issues.Add(product is null
-                        ? request.ProductId.ToString()
-                        : $"{product.Brand} {product.Name} (requested {request.Quantity}, available {product.StockQuantity})");
-                }
-            }
-
-            if (issues.Count > 0)
-            {
-                throw new InvalidOperationException($"Insufficient stock: {string.Join(", ", issues)}");
-            }
         }
 
         private async Task<List<string>> ValidateAndApplyStockOutAsync(Invoice invoice, Guid userId, CancellationToken cancellationToken)
@@ -1079,6 +1055,43 @@ namespace backend.Infrastructure.Pos.Service
                         vehicle.Customer.Address,
                         vehicle.Customer.Notes)))
                 .ToListAsync(cancellationToken);
+        }
+
+
+        private void ValidateSoftStock(IEnumerable<InvoiceItem> items)
+        {
+            var productRequests = items
+                .Where(item => item.ProductId.HasValue)
+                .GroupBy(item => item.ProductId!.Value)
+                .Select(group => new { ProductId = group.Key, Quantity = group.Sum(item => item.Quantity) })
+                .ToList();
+
+            if (productRequests.Count == 0)
+            {
+                return;
+            }
+
+            var productIds = productRequests.Select(item => item.ProductId).ToList();
+            var products = _db.Products
+                .Where(product => productIds.Contains(product.Id))
+                .ToList();
+
+            var issues = new List<string>();
+            foreach (var request in productRequests)
+            {
+                var product = products.FirstOrDefault(item => item.Id == request.ProductId);
+                if (product is null || product.StockQuantity < request.Quantity)
+                {
+                    issues.Add(product is null
+                        ? request.ProductId.ToString()
+                        : $"{product.Brand} {product.Name} (requested {request.Quantity}, available {product.StockQuantity})");
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                throw new InvalidOperationException($"Insufficient stock: {string.Join(", ", issues)}");
+            }
         }
     }
 }
