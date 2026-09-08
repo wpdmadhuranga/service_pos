@@ -190,27 +190,27 @@ namespace backend.Application.Pos
         }
     }
 
-    public sealed record PosRecordPaymentRequest : IValidatableObject
-    {
-        // [Range(typeof(decimal), "0.01", "79228162514264337593543950335")]
-        public decimal Amount { get; init; }
-
-        [Required]
-        public PaymentMethod Method { get; init; }
-
-        public DateTime? PaidAt { get; init; }
-
-        [StringLength(100)]
-        public string? ReferenceNo { get; init; }
-
-        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        public sealed record PosRecordPaymentRequest : IValidatableObject
         {
-            if (PaidAt is not null && PaidAt.Value.Kind == DateTimeKind.Unspecified)
+        
+            public decimal Amount { get; init; }
+
+            [Required]
+            public PaymentMethod Method { get; init; }
+
+            public DateTime? PaidAt { get; init; }
+
+            [StringLength(100)]
+            public string? ReferenceNo { get; init; }
+
+            public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
             {
-                yield return new ValidationResult("PaidAt must be UTC or local date-time with a known kind.", new[] { nameof(PaidAt) });
+                if (PaidAt is not null && PaidAt.Value.Kind == DateTimeKind.Unspecified)
+                {
+                    yield return new ValidationResult("PaidAt must be UTC or local date-time with a known kind.", new[] { nameof(PaidAt) });
+                }
             }
         }
-    }
 
     public sealed record PosInvoiceCustomerDto(
         Guid Id,

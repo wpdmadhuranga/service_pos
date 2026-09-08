@@ -208,6 +208,8 @@ namespace backend.Infrastructure.Inventory.Service
         {
             var items = await _db.InventoryItems
                 .AsNoTracking()
+                .Include(i => i.Transactions)
+                .Include(i => i.UsageRecords)
                 .ToListAsync(cancellationToken);
 
             var productsByItemId = await GetLinkedProductsByItemIdsAsync(
@@ -409,7 +411,23 @@ namespace backend.Infrastructure.Inventory.Service
                 LinkedProductStockQuantity = linkedProduct?.StockQuantity,
                 LinkedServiceId = linkedProduct?.ServiceId,
                 LinkedServiceName = linkedProduct?.Service?.Name,
-                LinkedCategoryName = linkedProduct?.Service?.Category?.Name
+                LinkedCategoryName = linkedProduct?.Service?.Category?.Name,
+
+                Transactions = item.Transactions.Select(t => new InventoryTransactionDto(
+                    t.Id,
+                    t.Type,
+                    t.Quantity,
+                    t.ReferenceInvoiceItemId,
+                    t.Note,
+                    t.CreatedBy,
+                    t.CreatedAt
+                )),
+
+                UsageRecords = item.UsageRecords.Select(u => new InvoiceItemUsageDto(
+                    u.Id,
+                    u.InvoiceItemId,
+                    u.QuantityUsed
+                ))
             };
         }
     }

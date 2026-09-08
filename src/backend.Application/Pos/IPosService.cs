@@ -19,7 +19,7 @@ namespace backend.Application.Pos
 
         Task<PosInvoiceDetailDto> UpdateInvoicePaymentAsync(
             Guid invoiceId,
-            PosUpdateInvoicePaymentRequest request,
+            PosRecordPaymentRequest request,
             CancellationToken cancellationToken = default);
 
         Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(int page, int pageSize, CancellationToken cancellationToken = default);

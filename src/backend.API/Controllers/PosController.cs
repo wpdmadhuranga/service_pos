@@ -142,7 +142,7 @@ namespace backend.API.Controllers
         [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosInvoiceDetailDto>> UpdateInvoicePayment(
             Guid id,
-            [FromBody] PosUpdateInvoicePaymentRequest request,
+            [FromBody] PosRecordPaymentRequest request,
             CancellationToken cancellationToken)
         {
             return await HandleAsync(() => _posService.UpdateInvoicePaymentAsync(id, request, cancellationToken));

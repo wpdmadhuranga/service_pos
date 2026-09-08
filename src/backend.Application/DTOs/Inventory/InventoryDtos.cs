@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using backend.Domain.Enums;
 
 namespace backend.Application.DTOs.Inventory
 {
@@ -145,12 +146,29 @@ namespace backend.Application.DTOs.Inventory
         public decimal ReorderLevel { get; set; }
         public decimal UnitCost { get; set; }
         public bool IsActive { get; set; }
-        public bool IsLowStock => QuantityOnHand <= ReorderLevel;
         public Guid? LinkedProductId { get; set; }
         public string? LinkedProductName { get; set; }
         public int? LinkedProductStockQuantity { get; set; }
         public Guid? LinkedServiceId { get; set; }
         public string? LinkedServiceName { get; set; }
         public string? LinkedCategoryName { get; set; }
+        public IEnumerable<InventoryTransactionDto> Transactions { get; set; } = new List<InventoryTransactionDto>();
+        public IEnumerable<InvoiceItemUsageDto> UsageRecords { get; set; } = new List<InvoiceItemUsageDto>();
     }
+
+    public record InventoryTransactionDto(
+        Guid Id,
+        InventoryTransactionType Type,
+        decimal Quantity,
+        Guid? ReferenceInvoiceItemId,
+        string? Note,
+        Guid CreatedBy,
+        DateTime CreatedAt
+    );
+
+    public record InvoiceItemUsageDto(
+        Guid Id,
+        Guid InvoiceItemId,
+        decimal QuantityUsed
+    );
 }

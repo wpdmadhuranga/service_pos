@@ -298,9 +298,13 @@ namespace backend.Infrastructure.Pos.Service
             if (request.Amount <= 0)
                 throw new InvalidOperationException("Payment amount must be greater than zero.");
 
-            var remainingDue = invoice.Total - invoice.AmountPaid;
+            var totalAlreadyPaid = invoice.Payments.Sum(p => p.Amount);
+            var remainingDue = invoice.Total - totalAlreadyPaid;
+
             if (request.Amount > remainingDue)
+            {
                 throw new InvalidOperationException($"Payment amount ({request.Amount:C}) exceeds remaining due ({remainingDue:C}).");
+            }
 
             var payment = new Payment
             {
@@ -314,12 +318,21 @@ namespace backend.Infrastructure.Pos.Service
 
             _db.Add(payment);
 
-            invoice.AmountPaid += request.Amount;
-            invoice.PaymentStatus = invoice.AmountPaid >= invoice.Total
-                ? PaymentStatus.Paid
-                : invoice.AmountPaid > 0
-                    ? PaymentStatus.PartiallyPaid
-                    : PaymentStatus.Unpaid;
+            invoice.AmountPaid = totalAlreadyPaid + request.Amount;
+
+            if (invoice.AmountPaid >= invoice.Total)
+            {
+                invoice.PaymentStatus = PaymentStatus.Paid;
+            }
+            else if (invoice.AmountPaid > 0)
+            {
+                invoice.PaymentStatus = PaymentStatus.PartiallyPaid;
+            }
+            else
+            {
+                invoice.PaymentStatus = PaymentStatus.Unpaid;
+            }
+
             invoice.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(cancellationToken);
@@ -900,11 +913,10 @@ namespace backend.Infrastructure.Pos.Service
         }
 
         public async Task<PosInvoiceDetailDto> UpdateInvoicePaymentAsync(
-             Guid invoiceId,
-             PosUpdateInvoicePaymentRequest request,
-             CancellationToken cancellationToken = default)
+            Guid invoiceId,
+            PosRecordPaymentRequest request, 
+            CancellationToken cancellationToken = default)
         {
-
             var invoice = await _db.Invoices
                 .Include(i => i.Customer)
                 .Include(i => i.Vehicle)
@@ -915,7 +927,25 @@ namespace backend.Infrastructure.Pos.Service
 
             if (invoice.Status == InvoiceStatus.Cancelled)
             {
-                throw new InvalidOperationException("Cannot update payments on a cancelled invoice.");
+                throw new InvalidOperationException("Cannot record payment on a cancelled invoice.");
+            }
+
+            if (invoice.Status == InvoiceStatus.Draft)
+            {
+                throw new InvalidOperationException("Invoice must be completed before recording payment.");
+            }
+
+            if (request.Amount <= 0)
+            {
+                throw new InvalidOperationException("Payment amount must be greater than zero.");
+            }
+
+            var totalAlreadyPaid = invoice.Payments.Sum(p => p.Amount);
+            var remainingDue = invoice.Total - totalAlreadyPaid;
+
+            if (request.Amount > remainingDue)
+            {
+                throw new InvalidOperationException($"Payment amount ({request.Amount:C}) exceeds remaining due ({remainingDue:C}).");
             }
 
             var oldValues = JsonSerializer.Serialize(new
@@ -924,8 +954,32 @@ namespace backend.Infrastructure.Pos.Service
                 invoice.PaymentStatus
             });
 
-            invoice.AmountPaid = request.AmountPaid;
-            invoice.PaymentStatus = request.PaymentStatus;
+            var payment = new Payment
+            {
+                Id = Guid.NewGuid(),
+                InvoiceId = invoice.Id,
+                Amount = request.Amount,
+                Method = request.Method,
+                PaidAt = DateTime.UtcNow,
+                ReferenceNo = request.ReferenceNo
+            };
+            _db.Add(payment);
+
+            invoice.AmountPaid = totalAlreadyPaid + request.Amount;
+
+            if (invoice.AmountPaid >= invoice.Total)
+            {
+                invoice.PaymentStatus = PaymentStatus.Paid;          
+            }
+            else if (invoice.AmountPaid > 0)
+            {
+                invoice.PaymentStatus = PaymentStatus.PartiallyPaid; 
+            }
+            else
+            {
+                invoice.PaymentStatus = PaymentStatus.Unpaid;
+            }
+
             invoice.UpdatedAt = DateTime.UtcNow;
 
             var newValues = JsonSerializer.Serialize(new
@@ -939,7 +993,7 @@ namespace backend.Infrastructure.Pos.Service
                 Id = Guid.NewGuid(),
                 TableName = "Invoices",
                 RecordId = invoice.Id,
-                Action = "UpdatePayment",
+                Action = "RecordPayment",
                 ChangedBy = null,
                 ChangedAt = DateTime.UtcNow,
                 OldValues = oldValues,
