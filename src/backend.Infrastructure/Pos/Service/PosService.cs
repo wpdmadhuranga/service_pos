@@ -818,11 +818,11 @@ namespace backend.Infrastructure.Pos.Service
 
 
         public async Task<PosDashboardInvoicesResponse> GetInvoiceOverviewAsync(
-            int weeklyPage,
-            int weeklyPageSize,
-            int monthlyPage,
-            int monthlyPageSize,
-                CancellationToken cancellationToken = default)
+    int weeklyPage,
+    int weeklyPageSize,
+    int monthlyPage,
+    int monthlyPageSize,
+        CancellationToken cancellationToken = default)
         {
             var utcNow = DateTime.UtcNow;
             var todayStart = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -834,7 +834,7 @@ namespace backend.Infrastructure.Pos.Service
                 .Include(i => i.Vehicle)
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
-                .Where(i => i.Status != InvoiceStatus.Cancelled && i.CreatedAt >= todayStart && i.CreatedAt < todayEnd)
+                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= todayStart && i.CreatedAt < todayEnd)
                 .OrderByDescending(i => i.CreatedAt);
 
             var todayInvoicesList = await todayInvoicesQuery.ToListAsync(cancellationToken);
@@ -845,7 +845,7 @@ namespace backend.Infrastructure.Pos.Service
 
             var weeklyQuery = _db.Invoices
                 .AsNoTracking()
-                .Where(i => i.Status != InvoiceStatus.Cancelled && i.CreatedAt >= weekStart && i.CreatedAt < weekEnd);
+                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= weekStart && i.CreatedAt < weekEnd);
 
             var weeklyTotalCount = await weeklyQuery.CountAsync(cancellationToken);
             var weeklyItems = await weeklyQuery
@@ -871,7 +871,7 @@ namespace backend.Infrastructure.Pos.Service
 
             var monthlyQuery = _db.Invoices
                 .AsNoTracking()
-                .Where(i => i.Status != InvoiceStatus.Cancelled && i.CreatedAt >= monthStart && i.CreatedAt < monthEnd);
+                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= monthStart && i.CreatedAt < monthEnd);
 
             var monthlyTotalCount = await monthlyQuery.CountAsync(cancellationToken);
             var monthlyItems = await monthlyQuery
@@ -898,7 +898,7 @@ namespace backend.Infrastructure.Pos.Service
                 .Include(i => i.Vehicle)
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
-                .Where(i => i.Status != InvoiceStatus.Cancelled && ((int)i.PaymentStatus == 0 || (int)i.PaymentStatus == 1))
+                .Where(i => i.Status == InvoiceStatus.Completed && ((int)i.PaymentStatus == 0 || (int)i.PaymentStatus == 1))
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync(cancellationToken);
 
@@ -914,7 +914,7 @@ namespace backend.Infrastructure.Pos.Service
 
         public async Task<PosInvoiceDetailDto> UpdateInvoicePaymentAsync(
             Guid invoiceId,
-            PosRecordPaymentRequest request, 
+            PosRecordPaymentRequest request,
             CancellationToken cancellationToken = default)
         {
             var invoice = await _db.Invoices
@@ -969,11 +969,11 @@ namespace backend.Infrastructure.Pos.Service
 
             if (invoice.AmountPaid >= invoice.Total)
             {
-                invoice.PaymentStatus = PaymentStatus.Paid;          
+                invoice.PaymentStatus = PaymentStatus.Paid;
             }
             else if (invoice.AmountPaid > 0)
             {
-                invoice.PaymentStatus = PaymentStatus.PartiallyPaid; 
+                invoice.PaymentStatus = PaymentStatus.PartiallyPaid;
             }
             else
             {

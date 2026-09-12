@@ -15,6 +15,7 @@ namespace backend.Application.DTOs.Inventory.Products
         public int StockQuantity { get; set; }
         public string? Unit { get; set; }
         public bool IsActive { get; set; }
+        public string? InventoryItemId { get; set; }
     }
 
 

@@ -144,31 +144,31 @@ namespace backend.Infrastructure.Services
                 service.IsActive,
                 service.SortOrder);
         }
-    
 
-    // public async Task<IEnumerable<ServiceDto>> GetAllAsync(CancellationToken cancellationToken = default)
-    //     {
-    //         var services = await _db.Services
-    //             .AsNoTracking()
-    //             .Include(item => item.Category)
-    //             .ToListAsync(cancellationToken);
 
-    //         return services.Select(service => new ServiceDto(
-    //             service.Id,
-    //             service.CategoryId,
-    //             service.Category.Name,
-    //             service.Name,
-    //             service.Description,
-    //             service.DefaultPrice,
-    //             service.PricingType,
-    //             service.MinPrice,
-    //             service.MaxPrice,
-    //             service.Unit,
-    //             service.IsActive,
-    //             service.SortOrder));
-    //     } 
+        // public async Task<IEnumerable<ServiceDto>> GetAllAsync(CancellationToken cancellationToken = default)
+        //     {
+        //         var services = await _db.Services
+        //             .AsNoTracking()
+        //             .Include(item => item.Category)
+        //             .ToListAsync(cancellationToken);
 
-         public async Task<List<ServiceGetDto>> GetAllAsync()
+        //         return services.Select(service => new ServiceDto(
+        //             service.Id,
+        //             service.CategoryId,
+        //             service.Category.Name,
+        //             service.Name,
+        //             service.Description,
+        //             service.DefaultPrice,
+        //             service.PricingType,
+        //             service.MinPrice,
+        //             service.MaxPrice,
+        //             service.Unit,
+        //             service.IsActive,
+        //             service.SortOrder));
+        //     } 
+
+        public async Task<List<ServiceGetDto>> GetAllAsync()
         {
             var services = await _db.Services
                 .AsNoTracking()
@@ -205,11 +205,13 @@ namespace backend.Infrastructure.Services
                         SellingPrice = p.SellingPrice,
                         StockQuantity = p.StockQuantity,
                         Unit = p.Unit,
-                        IsActive = p.IsActive
+                        IsActive = p.IsActive,
+                        InventoryItemId = p.InventoryItemId.HasValue ? p.InventoryItemId.Value.ToString() : null
                     }).ToList()
                 })
                 .ToListAsync();
 
             return services;
-        }  
-}}
+        }
+    }
+}

@@ -14,7 +14,6 @@ namespace ServiceCenterApi.Data.Configurations
             builder.Property(p => p.Amount).HasColumnType("decimal(10,2)");
             builder.Property(p => p.Method).HasConversion<string>().HasMaxLength(20);
             builder.Property(p => p.ReferenceNo).HasMaxLength(100);
-
             builder.HasOne(p => p.Invoice)
                 .WithMany(i => i.Payments)
                 .HasForeignKey(p => p.InvoiceId)

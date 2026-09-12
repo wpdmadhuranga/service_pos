@@ -10,9 +10,7 @@ namespace backend.Domain.Entities
         public decimal Amount { get; set; }
         public PaymentMethod Method { get; set; }
         public DateTime PaidAt { get; set; }
-        public string? ReferenceNo { get; set; } // bank ref, card auth code, etc.
-
-        // Navigation
+        public string? ReferenceNo { get; set; }
         public Invoice Invoice { get; set; } = null!;
     }
 }
