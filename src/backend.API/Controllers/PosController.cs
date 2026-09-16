@@ -164,5 +164,51 @@ namespace backend.API.Controllers
         {
             return await HandleAsync(() => _posService.GetAllCustomersDetailAsync(page, pageSize, cancellationToken));
         }
+
+        [HttpGet("customers/{customerId:guid}/invoices")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<PagedResultDto<PosInvoiceSummaryDto>>> GetCustomerInvoicesPaged(
+        Guid customerId,
+        [FromQuery] Guid? vehicleId,
+        [FromQuery] bool onlyWithoutVehicle = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+        {
+            return await HandleAsync(() => _posService.GetCustomerInvoicesPagedAsync(
+                customerId, vehicleId, onlyWithoutVehicle, page, pageSize, cancellationToken));
+        }
+
+        [HttpGet("invoices/search")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<PagedResultDto<PosInvoiceDetailDto>>> SearchInvoices(
+    [FromQuery] string? customerName = null,
+    [FromQuery] string? plateNumber = null,
+    [FromQuery] DateTime? date = null,
+    [FromQuery] DateTime? fromDate = null,
+    [FromQuery] DateTime? toDate = null,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    CancellationToken cancellationToken = default)
+        {
+            if (date.HasValue && (fromDate.HasValue || toDate.HasValue))
+            {
+                return BadRequest("When a specific 'date' is provided, 'fromDate' and 'toDate' are not allowed.");
+            }
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100;
+
+            return await HandleAsync(() => _posService.SearchInvoicesAsync(
+                customerName,
+                plateNumber,
+                date,
+                fromDate,
+                toDate,
+                page,
+                pageSize,
+                cancellationToken));
+        }
     }
 }

@@ -146,30 +146,27 @@ namespace backend.Application.Pos
         public List<PosInvoiceItemInput> Items { get; init; } = [];
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-        {
-            if (CustomerId is null && Customer is null)
             {
-                yield return new ValidationResult("Either CustomerId or Customer must be supplied.", new[] { nameof(CustomerId), nameof(Customer) });
-            }
+                if (CustomerId is not null && Customer is not null)
+                {
+                    yield return new ValidationResult("Provide either CustomerId or Customer, not both.", new[] { nameof(CustomerId), nameof(Customer) });
+                }
+            
 
-            if (CustomerId is not null && Customer is not null)
-            {
-                yield return new ValidationResult("Provide either CustomerId or Customer, not both.", new[] { nameof(CustomerId), nameof(Customer) });
+                if (VehicleId is not null && Vehicle is not null)
+                {
+                    yield return new ValidationResult("Provide either VehicleId or Vehicle, not both.", new[] { nameof(VehicleId), nameof(Vehicle) });
+                }
+   
+                if (Vehicle is not null && CustomerId is null && Customer is null)
+                {
+                    yield return new ValidationResult("A customer must be supplied when providing new vehicle details.", new[] { nameof(Customer), nameof(Vehicle) });
+                }
             }
-
-            if (VehicleId is null && Vehicle is null)
-            {
-                yield return new ValidationResult("Either VehicleId or Vehicle must be supplied.", new[] { nameof(VehicleId), nameof(Vehicle) });
-            }
-
-            if (VehicleId is not null && Vehicle is not null)
-            {
-                yield return new ValidationResult("Provide either VehicleId or Vehicle, not both.", new[] { nameof(VehicleId), nameof(Vehicle) });
-            }
-        }
+        
 
         public PosRecordPaymentRequest? InitialPayment { get; init; }
-    }
+        }
 
     public sealed record PosUpdateDraftInvoiceRequest : IValidatableObject
     {
@@ -248,8 +245,8 @@ namespace backend.Application.Pos
     public sealed record PosInvoiceDetailDto(
         Guid Id,
         string InvoiceNumber,
-        Guid CustomerId,
-        Guid VehicleId,
+        Guid? CustomerId,
+        Guid? VehicleId,
         Guid UserId,
         int? OdometerAtService,
         string Status,
@@ -262,8 +259,8 @@ namespace backend.Application.Pos
         string? Notes,
         DateTime CreatedAt,
         DateTime UpdatedAt,
-        PosInvoiceCustomerDto Customer,
-        PosInvoiceVehicleDto Vehicle,
+        PosInvoiceCustomerDto? Customer,
+        PosInvoiceVehicleDto? Vehicle,
         IReadOnlyList<PosInvoiceItemDto> Items,
         IReadOnlyList<PosPaymentDto> Payments);
 
@@ -295,7 +292,9 @@ namespace backend.Application.Pos
           string? Email,
           string? Address,
           string? Notes,
-          IReadOnlyList<PosVehicleWithInvoicesDto> Vehicles);
+          IReadOnlyList<PosVehicleWithInvoicesDto> Vehicles,
+          int NoVehicleInvoiceCount,
+          IReadOnlyList<PosInvoiceSummaryDto> InvoicesWithoutVehicle);
 
     public record PosVehicleWithInvoicesDto(
         Guid Id,
@@ -305,6 +304,7 @@ namespace backend.Application.Pos
         int? Year,
         string? VehicleType,
         int OdometerReading,
+        int TotalInvoiceCount,
         IReadOnlyList<PosInvoiceSummaryDto> Invoices);
 
     public record PosInvoiceSummaryDto(

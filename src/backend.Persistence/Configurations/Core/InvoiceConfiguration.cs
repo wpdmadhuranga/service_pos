@@ -23,9 +23,10 @@ namespace ServiceCenterApi.Data.Configurations
 
             builder.Property(i => i.Notes).HasMaxLength(1000);
 
-            builder.HasIndex(i => i.CreatedAt); // date-range reports
+            builder.HasIndex(i => i.CreatedAt); 
             builder.HasIndex(i => i.CustomerId);
             builder.HasIndex(i => i.VehicleId);
+            builder.HasIndex(i => new { i.CustomerId, i.VehicleId, i.CreatedAt });
 
             builder.HasOne(i => i.Customer)
                 .WithMany(c => c.Invoices)

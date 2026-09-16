@@ -24,5 +24,21 @@ namespace backend.Application.Pos
 
         Task<PagedResultDto<PosCustomerDetailDto>> GetAllCustomersDetailAsync(int page, int pageSize, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<PosVehicleWithCustomerDto>> GetAllVehiclesWithCustomerAsync(CancellationToken cancellationToken = default);
+        Task<PagedResultDto<PosInvoiceSummaryDto>> GetCustomerInvoicesPagedAsync(
+        Guid customerId,
+        Guid? vehicleId,
+        bool onlyWithoutVehicle,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+       Task<PagedResultDto<PosInvoiceDetailDto>> SearchInvoicesAsync(
+    string? customerName,
+    string? plateNumber,
+    DateTime? date,
+    DateTime? fromDate,
+    DateTime? toDate,
+    int page,
+    int pageSize,
+    CancellationToken cancellationToken = default);
     }
 }

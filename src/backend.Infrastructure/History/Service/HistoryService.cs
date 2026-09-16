@@ -174,10 +174,10 @@ namespace backend.Infrastructure.History.Service
                 invoice.Status.ToString(),
                 paymentStatus,
                 invoice.CustomerId,
-                invoice.Customer.Name,
-                invoice.Customer.Phone,
+                invoice.Customer?.Name,
+                invoice.Customer?.Phone,
                 invoice.VehicleId,
-                invoice.Vehicle.PlateNumber,
+                invoice.Vehicle?.PlateNumber,
                 invoice.Subtotal,
                 invoice.Discount,
                 invoice.Tax,
@@ -212,13 +212,13 @@ namespace backend.Infrastructure.History.Service
                 invoice.Notes,
                 invoice.CreatedAt,
                 invoice.UpdatedAt,
-                new HistoryCustomerDto(
+                invoice.Customer is null ? null : new HistoryCustomerDto(
                     invoice.Customer.Id,
                     invoice.Customer.Name,
                     invoice.Customer.Phone,
                     invoice.Customer.Email,
                     invoice.Customer.Address),
-                new HistoryVehicleDto(
+                invoice.Vehicle is null ? null : new HistoryVehicleDto(
                     invoice.Vehicle.Id,
                     invoice.Vehicle.PlateNumber,
                     invoice.Vehicle.Make,
