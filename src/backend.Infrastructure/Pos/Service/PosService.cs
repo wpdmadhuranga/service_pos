@@ -341,53 +341,94 @@ namespace backend.Infrastructure.Pos.Service
             return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
         }
 
-        public async Task<PosInvoiceDetailDto> CancelInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default)
+        public async Task<PosInvoiceDetailDto> CancelInvoiceAsync(
+    Guid invoiceId,
+    CancellationToken cancellationToken = default)
         {
             var invoice = await LoadInvoiceForEditAsync(invoiceId, cancellationToken)
                 ?? throw new InvalidOperationException("Invoice was not found.");
 
             if (invoice.Status is not InvoiceStatus.Draft and not InvoiceStatus.Completed)
             {
-                throw new InvalidOperationException("Only draft or completed invoices can be cancelled.");
+                throw new InvalidOperationException(
+                    "Only draft or completed invoices can be cancelled.");
             }
 
             if (invoice.Status == InvoiceStatus.Cancelled)
             {
-                throw new InvalidOperationException("This invoice is already cancelled.");
+                throw new InvalidOperationException(
+                    "This invoice is already cancelled.");
             }
 
-            var invoiceItemIds = invoice.InvoiceItems.Select(ii => ii.Id).ToList();
+            var now = DateTime.UtcNow;
+
+            var invoiceItems = invoice.InvoiceItems.ToList();
+
+
+            foreach (var invoiceItem in invoiceItems)
+            {
+                if (!invoiceItem.ProductId.HasValue)
+                {
+                    continue;
+                }
+
+                var product = await _db.Products
+                    .FirstOrDefaultAsync(
+                        p => p.Id == invoiceItem.ProductId.Value,
+                        cancellationToken);
+
+                if (product == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Product {invoiceItem.ProductId.Value} was not found.");
+                }
+
+                product.StockQuantity += invoiceItem.Quantity;
+                product.UpdatedAt = now;
+            }
+
+
+            var invoiceItemIds = invoiceItems
+                .Select(ii => ii.Id)
+                .ToList();
 
             var usages = await _db.InvoiceItemInventoryUsages
                 .Where(u => invoiceItemIds.Contains(u.InvoiceItemId))
                 .ToListAsync(cancellationToken);
+
+
             foreach (var usage in usages)
             {
                 var inventoryItem = await _db.InventoryItems
-                    .FirstOrDefaultAsync(i => i.Id == usage.InventoryItemId, cancellationToken);
+                    .FirstOrDefaultAsync(
+                        i => i.Id == usage.InventoryItemId,
+                        cancellationToken);
 
-                if (inventoryItem != null)
+                if (inventoryItem == null)
                 {
-                    inventoryItem.QuantityOnHand += usage.QuantityUsed;
-                    inventoryItem.UpdatedAt = DateTime.UtcNow;
-
-                    var product = await _db.Products
-                        .FirstOrDefaultAsync(p => p.InventoryItemId == inventoryItem.Id, cancellationToken);
-
-                    if (product != null)
-                    {
-                        product.StockQuantity += (int)usage.QuantityUsed;
-                        product.UpdatedAt = DateTime.UtcNow;
-                    }
+                    throw new InvalidOperationException(
+                        $"Inventory item {usage.InventoryItemId} was not found.");
                 }
-            }
 
-            var oldValues = JsonSerializer.Serialize(new { invoice.Status, invoice.AmountPaid, invoice.PaymentStatus });
+                inventoryItem.QuantityOnHand += usage.QuantityUsed;
+                inventoryItem.UpdatedAt = now;
+            }
+            var oldValues = JsonSerializer.Serialize(new
+            {
+                invoice.Status,
+                invoice.AmountPaid,
+                invoice.PaymentStatus
+            });
 
             invoice.Status = InvoiceStatus.Cancelled;
-            invoice.UpdatedAt = DateTime.UtcNow;
+            invoice.UpdatedAt = now;
 
-            var newValues = JsonSerializer.Serialize(new { invoice.Status, invoice.AmountPaid, invoice.PaymentStatus });
+            var newValues = JsonSerializer.Serialize(new
+            {
+                invoice.Status,
+                invoice.AmountPaid,
+                invoice.PaymentStatus
+            });
 
             _db.Add(new AuditLog
             {
@@ -395,14 +436,17 @@ namespace backend.Infrastructure.Pos.Service
                 TableName = "Invoices",
                 RecordId = invoice.Id,
                 Action = "Cancel",
-                ChangedAt = DateTime.UtcNow,
+                ChangedAt = now,
                 OldValues = oldValues,
                 NewValues = newValues
             });
 
+
             await _db.SaveChangesAsync(cancellationToken);
 
-            return await LoadInvoiceDetailAsync(invoice.Id, cancellationToken);
+            return await LoadInvoiceDetailAsync(
+                invoice.Id,
+                cancellationToken);
         }
         private async Task<(Customer? Customer, Vehicle? Vehicle)> ResolveCustomerAndVehicleAsync(PosCreateInvoiceRequest request, CancellationToken cancellationToken)
         {
@@ -814,79 +858,51 @@ namespace backend.Infrastructure.Pos.Service
 
 
         public async Task<PosDashboardInvoicesResponse> GetInvoiceOverviewAsync(
-    int weeklyPage,
-    int weeklyPageSize,
-    int monthlyPage,
-    int monthlyPageSize,
-        CancellationToken cancellationToken = default)
+    CancellationToken cancellationToken = default)
         {
             var utcNow = DateTime.UtcNow;
             var todayStart = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
             var todayEnd = todayStart.AddDays(1);
 
-            var todayInvoicesQuery = _db.Invoices
+            var todayInvoicesList = await _db.Invoices
                 .AsNoTracking()
                 .Include(i => i.Customer)
                 .Include(i => i.Vehicle)
                 .Include(i => i.InvoiceItems)
                 .Include(i => i.Payments)
                 .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= todayStart && i.CreatedAt < todayEnd)
-                .OrderByDescending(i => i.CreatedAt);
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync(cancellationToken);
 
-            var todayInvoicesList = await todayInvoicesQuery.ToListAsync(cancellationToken);
             var todayDtos = todayInvoicesList.Select(ToDetailDto).ToList();
+            var todayRevenue = todayInvoicesList.Sum(i => i.Total);
 
             var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
             var weekEnd = weekStart.AddDays(7);
 
-            var weeklyQuery = _db.Invoices
+            var weeklyRevenueRaw = await _db.Invoices
                 .AsNoTracking()
-                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= weekStart && i.CreatedAt < weekEnd);
-
-            var weeklyTotalCount = await weeklyQuery.CountAsync(cancellationToken);
-            var weeklyItems = await weeklyQuery
-                .Include(i => i.Customer)
-                .Include(i => i.Vehicle)
-                .Include(i => i.InvoiceItems)
-                .Include(i => i.Payments)
-                .OrderByDescending(i => i.CreatedAt)
-                .Skip((weeklyPage - 1) * weeklyPageSize)
-                .Take(weeklyPageSize)
+                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= weekStart && i.CreatedAt < weekEnd)
+                .GroupBy(i => i.CreatedAt.Date)
+                .Select(g => new { Date = g.Key, Revenue = g.Sum(i => i.Total) })
                 .ToListAsync(cancellationToken);
 
-            var weeklyResult = new PagedResultDto<PosInvoiceDetailDto>(
-                weeklyItems.Select(ToDetailDto).ToList(),
-                weeklyTotalCount,
-                weeklyPage,
-                weeklyPageSize,
-                (int)Math.Ceiling(weeklyTotalCount / (double)weeklyPageSize)
-            );
+            var weeklyRevenueByDay = Enumerable.Range(0, 7)
+                .Select(offset => weekStart.AddDays(offset))
+                .Select(date => new DailyRevenueDto(
+                    date,
+                    weeklyRevenueRaw.FirstOrDefault(x => x.Date == date)?.Revenue ?? 0m))
+                .ToList();
+
+            var weeklyRevenue = weeklyRevenueByDay.Sum(d => d.Revenue);
 
             var monthStart = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var monthEnd = monthStart.AddMonths(1);
 
-            var monthlyQuery = _db.Invoices
+            var monthlyRevenue = await _db.Invoices
                 .AsNoTracking()
-                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= monthStart && i.CreatedAt < monthEnd);
-
-            var monthlyTotalCount = await monthlyQuery.CountAsync(cancellationToken);
-            var monthlyItems = await monthlyQuery
-                .Include(i => i.Customer)
-                .Include(i => i.Vehicle)
-                .Include(i => i.InvoiceItems)
-                .Include(i => i.Payments)
-                .OrderByDescending(i => i.CreatedAt)
-                .Skip((monthlyPage - 1) * monthlyPageSize)
-                .Take(monthlyPageSize)
-                .ToListAsync(cancellationToken);
-
-            var monthlyResult = new PagedResultDto<PosInvoiceDetailDto>(
-                monthlyItems.Select(ToDetailDto).ToList(),
-                monthlyTotalCount,
-                monthlyPage,
-                monthlyPageSize,
-                (int)Math.Ceiling(monthlyTotalCount / (double)monthlyPageSize)
-            );
+                .Where(i => i.Status == InvoiceStatus.Completed && i.CreatedAt >= monthStart && i.CreatedAt < monthEnd)
+                .SumAsync(i => i.Total, cancellationToken);
 
             var duePaymentsList = await _db.Invoices
                 .AsNoTracking()
@@ -899,12 +915,16 @@ namespace backend.Infrastructure.Pos.Service
                 .ToListAsync(cancellationToken);
 
             var dueDtos = duePaymentsList.Select(ToDetailDto).ToList();
+            var duePaymentsRevenue = duePaymentsList.Sum(i => i.Total);
 
             return new PosDashboardInvoicesResponse(
                 todayDtos,
-                weeklyResult,
-                monthlyResult,
-                dueDtos
+                todayRevenue,
+                weeklyRevenue,
+                weeklyRevenueByDay,
+                monthlyRevenue,
+                dueDtos,
+                duePaymentsRevenue
             );
         }
 
@@ -1408,6 +1428,79 @@ namespace backend.Infrastructure.Pos.Service
                 pageSize,
                 (int)Math.Ceiling(totalCount / (double)pageSize)
             );
+        }
+
+        public async Task<IReadOnlyList<PosCustomerWithVehiclesDto>>
+     GetAllCustomersWithVehiclesAsync(
+         CancellationToken cancellationToken = default)
+        {
+            var customers = await _db.Customers
+                .AsNoTracking()
+                .OrderBy(c => c.Name)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Phone,
+                    c.Email,
+                    c.Address,
+                    c.Notes
+                })
+                .ToListAsync(cancellationToken);
+
+            var customerIds = customers
+                .Select(c => c.Id)
+                .ToList();
+
+            var vehicles = await _db.Vehicles
+                .AsNoTracking()
+                .Where(v => customerIds.Contains(v.CustomerId))
+                .OrderBy(v => v.PlateNumber)
+                .Select(v => new
+                {
+                    v.Id,
+                    v.CustomerId,
+                    v.PlateNumber,
+                    v.Make,
+                    v.Model,
+                    v.Year,
+                    v.VehicleType,
+                    v.OdometerReading
+                })
+                .ToListAsync(cancellationToken);
+
+            var vehiclesByCustomer = vehicles
+                .GroupBy(v => v.CustomerId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyList<PosCustomerVehicleDto>)
+                        group.Select(v => new PosCustomerVehicleDto(
+                            v.Id,
+                            v.PlateNumber,
+                            v.Make,
+                            v.Model,
+                            v.Year,
+                            v.VehicleType,
+                            v.OdometerReading
+                        )).ToList()
+                );
+
+            return customers
+                .Select(customer =>
+                    new PosCustomerWithVehiclesDto(
+                        customer.Id,
+                        customer.Name,
+                        customer.Phone,
+                        customer.Email,
+                        customer.Address,
+                        customer.Notes,
+                        vehiclesByCustomer.TryGetValue(
+                            customer.Id,
+                            out var customerVehicles)
+                            ? customerVehicles
+                            : Array.Empty<PosCustomerVehicleDto>()
+                    ))
+                .ToList();
         }
     }
 }

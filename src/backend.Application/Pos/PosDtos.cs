@@ -146,27 +146,27 @@ namespace backend.Application.Pos
         public List<PosInvoiceItemInput> Items { get; init; } = [];
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (CustomerId is not null && Customer is not null)
             {
-                if (CustomerId is not null && Customer is not null)
-                {
-                    yield return new ValidationResult("Provide either CustomerId or Customer, not both.", new[] { nameof(CustomerId), nameof(Customer) });
-                }
-            
-
-                if (VehicleId is not null && Vehicle is not null)
-                {
-                    yield return new ValidationResult("Provide either VehicleId or Vehicle, not both.", new[] { nameof(VehicleId), nameof(Vehicle) });
-                }
-   
-                if (Vehicle is not null && CustomerId is null && Customer is null)
-                {
-                    yield return new ValidationResult("A customer must be supplied when providing new vehicle details.", new[] { nameof(Customer), nameof(Vehicle) });
-                }
+                yield return new ValidationResult("Provide either CustomerId or Customer, not both.", new[] { nameof(CustomerId), nameof(Customer) });
             }
-        
+
+
+            if (VehicleId is not null && Vehicle is not null)
+            {
+                yield return new ValidationResult("Provide either VehicleId or Vehicle, not both.", new[] { nameof(VehicleId), nameof(Vehicle) });
+            }
+
+            if (Vehicle is not null && CustomerId is null && Customer is null)
+            {
+                yield return new ValidationResult("A customer must be supplied when providing new vehicle details.", new[] { nameof(Customer), nameof(Vehicle) });
+            }
+        }
+
 
         public PosRecordPaymentRequest? InitialPayment { get; init; }
-        }
+    }
 
     public sealed record PosUpdateDraftInvoiceRequest : IValidatableObject
     {
@@ -187,27 +187,27 @@ namespace backend.Application.Pos
         }
     }
 
-        public sealed record PosRecordPaymentRequest : IValidatableObject
+    public sealed record PosRecordPaymentRequest : IValidatableObject
+    {
+
+        public decimal Amount { get; init; }
+
+        [Required]
+        public PaymentMethod Method { get; init; }
+
+        public DateTime? PaidAt { get; init; }
+
+        [StringLength(100)]
+        public string? ReferenceNo { get; init; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-        
-            public decimal Amount { get; init; }
-
-            [Required]
-            public PaymentMethod Method { get; init; }
-
-            public DateTime? PaidAt { get; init; }
-
-            [StringLength(100)]
-            public string? ReferenceNo { get; init; }
-
-            public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+            if (PaidAt is not null && PaidAt.Value.Kind == DateTimeKind.Unspecified)
             {
-                if (PaidAt is not null && PaidAt.Value.Kind == DateTimeKind.Unspecified)
-                {
-                    yield return new ValidationResult("PaidAt must be UTC or local date-time with a known kind.", new[] { nameof(PaidAt) });
-                }
+                yield return new ValidationResult("PaidAt must be UTC or local date-time with a known kind.", new[] { nameof(PaidAt) });
             }
         }
+    }
 
     public sealed record PosInvoiceCustomerDto(
         Guid Id,
@@ -264,12 +264,17 @@ namespace backend.Application.Pos
         IReadOnlyList<PosInvoiceItemDto> Items,
         IReadOnlyList<PosPaymentDto> Payments);
 
-    public record PosDashboardInvoicesResponse(
+        public sealed record PosDashboardInvoicesResponse(
         IReadOnlyList<PosInvoiceDetailDto> TodayInvoices,
-        PagedResultDto<PosInvoiceDetailDto> WeeklyInvoices,
-        PagedResultDto<PosInvoiceDetailDto> MonthlyInvoices,
-        IReadOnlyList<PosInvoiceDetailDto> AllTimeDuePayments
+        decimal TodayRevenue,
+        decimal WeeklyRevenue,
+        IReadOnlyList<DailyRevenueDto> WeeklyRevenueByDay,
+        decimal MonthlyRevenue,
+        IReadOnlyList<PosInvoiceDetailDto> AllTimeDuePayments,
+        decimal DuePaymentsRevenue
 );
+
+    public sealed record DailyRevenueDto(DateTime Date, decimal Revenue);
 
     public record PagedResultDto<T>(
         IReadOnlyList<T> Items,
@@ -373,5 +378,22 @@ namespace backend.Application.Pos
         public bool IsActive { get; set; }
     }
 
+    public record PosCustomerWithVehiclesDto(
+    Guid Id,
+    string Name,
+    string Phone,
+    string? Email,
+    string? Address,
+    string? Notes,
+    IReadOnlyList<PosCustomerVehicleDto> Vehicles);
+
+    public record PosCustomerVehicleDto(
+        Guid Id,
+        string PlateNumber,
+        string? Make,
+        string? Model,
+        int? Year,
+        string? VehicleType,
+        int OdometerReading);
 
 }

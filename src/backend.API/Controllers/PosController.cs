@@ -128,14 +128,9 @@ namespace backend.API.Controllers
         [HttpGet("invoices/overview")]
         [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<ActionResult<PosDashboardInvoicesResponse>> GetInvoiceOverview(
-            [FromQuery] int weeklyPage = 1,
-            [FromQuery] int weeklyPageSize = 10,
-            [FromQuery] int monthlyPage = 1,
-            [FromQuery] int monthlyPageSize = 10,
-            CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
         {
-            return await HandleAsync(() => _posService.GetInvoiceOverviewAsync(
-            weeklyPage, weeklyPageSize, monthlyPage, monthlyPageSize, cancellationToken));
+            return await HandleAsync(() => _posService.GetInvoiceOverviewAsync(cancellationToken));
         }
 
         [HttpPut("invoices/{id:guid}/payment")]
@@ -210,5 +205,17 @@ namespace backend.API.Controllers
                 pageSize,
                 cancellationToken));
         }
+
+        [HttpGet("customers/vehicles")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<ActionResult<IReadOnlyList<PosCustomerWithVehiclesDto>>>
+    GetAllCustomersWithVehicles(
+        CancellationToken cancellationToken)
+        {
+            return await HandleAsync(
+                () => _posService.GetAllCustomersWithVehiclesAsync(
+                    cancellationToken));
+        }
+
     }
 }

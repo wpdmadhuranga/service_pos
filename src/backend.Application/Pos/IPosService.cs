@@ -11,10 +11,6 @@ namespace backend.Application.Pos
         Task<PosInvoiceDetailDto> RecordPaymentAsync(Guid invoiceId, PosRecordPaymentRequest request, CancellationToken cancellationToken = default);
         Task<PosInvoiceDetailDto> CancelInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default);
         Task<PosDashboardInvoicesResponse> GetInvoiceOverviewAsync(
-            int weeklyPage,
-            int weeklyPageSize,
-            int monthlyPage,
-            int monthlyPageSize,
             CancellationToken cancellationToken = default);
 
         Task<PosInvoiceDetailDto> UpdateInvoicePaymentAsync(
@@ -31,14 +27,19 @@ namespace backend.Application.Pos
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
-       Task<PagedResultDto<PosInvoiceDetailDto>> SearchInvoicesAsync(
-    string? customerName,
-    string? plateNumber,
-    DateTime? date,
-    DateTime? fromDate,
-    DateTime? toDate,
-    int page,
-    int pageSize,
-    CancellationToken cancellationToken = default);
+        Task<PagedResultDto<PosInvoiceDetailDto>> SearchInvoicesAsync(
+     string? customerName,
+     string? plateNumber,
+     DateTime? date,
+     DateTime? fromDate,
+     DateTime? toDate,
+     int page,
+     int pageSize,
+     CancellationToken cancellationToken = default);
+
+        Task<IReadOnlyList<PosCustomerWithVehiclesDto>>
+        GetAllCustomersWithVehiclesAsync(
+            CancellationToken cancellationToken = default);
     }
+
 }
