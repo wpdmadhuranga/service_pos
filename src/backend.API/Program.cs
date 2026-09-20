@@ -87,10 +87,17 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogError("❌ Unable to connect to the database.");
         }
+
+        if (app.Configuration.GetValue<bool>("ApplyMigrationsAtStartup", false))
+        {
+            logger.LogInformation("🔄 Applying pending database migrations...");
+            db.Database.Migrate();
+            logger.LogInformation("✅ Database migrations applied successfully.");
+        }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Database connection failed.");
+        logger.LogError(ex, "❌ Database operation failed during startup.");
     }
 }
 app.UseAuthentication();   
