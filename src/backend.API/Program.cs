@@ -79,28 +79,27 @@ using (var scope = app.Services.CreateScope())
     {
         var db = services.GetRequiredService<ApplicationDbContext>();
 
-        if (db.Database.CanConnect())
-        {
-            logger.LogInformation("✅ Database connected successfully.");
-        }
-        else
-        {
-            logger.LogError("❌ Unable to connect to the database.");
-        }
+        await db.Database.OpenConnectionAsync();
+
+        logger.LogInformation("✅ Database connection opened successfully.");
+
+        await db.Database.CloseConnectionAsync();
 
         if (app.Configuration.GetValue<bool>("ApplyMigrationsAtStartup", false))
         {
             logger.LogInformation("🔄 Applying pending database migrations...");
-            db.Database.Migrate();
+
+            await db.Database.MigrateAsync();
+
             logger.LogInformation("✅ Database migrations applied successfully.");
         }
     }
     catch (Exception ex)
     {
-        logger.LogError(
-            ex,
-            "❌ Database connection failed. Error: {Message}",
-            ex.Message);
+        logger.LogError(ex, "❌ Database connection failed.");
+        Console.WriteLine("========== DATABASE ERROR ==========");
+        Console.WriteLine(ex.ToString());
+        Console.WriteLine("====================================");
     }
 }
 app.UseAuthentication();
