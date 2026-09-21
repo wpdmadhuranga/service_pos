@@ -12,11 +12,21 @@ namespace backend.Persistence
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(
-                    configuration.GetConnectionString("DefaultConnection")));
+            var connectionString =
+                configuration["DATABASE_URL"]
+                ?? configuration.GetConnectionString("DefaultConnection");
 
-            services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "Database connection string is not configured.");
+            }
+
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(connectionString));
+
+            services.AddScoped<IApplicationDbContext>(
+                sp => sp.GetRequiredService<ApplicationDbContext>());
 
             return services;
         }
