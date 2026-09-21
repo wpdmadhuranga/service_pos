@@ -14,8 +14,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers();
-builder.Services.AddPersistence(builder.Configuration);      
-builder.Services.AddInfrastructure(builder.Configuration);   
+builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(options =>
@@ -97,10 +97,13 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Database operation failed during startup.");
+        logger.LogError(
+            ex,
+            "❌ Database connection failed. Error: {Message}",
+            ex.Message);
     }
 }
-app.UseAuthentication();   
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
